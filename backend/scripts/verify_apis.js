@@ -557,6 +557,8 @@ const runTests = async () => {
   });
   assert(mockErrorChat.status === 500, '[Mock] Error trigger returns 500');
   assert(mockErrorChat.data.success === false, '[Mock] Error response success is false');
+  assert(mockErrorChat.data.error && mockErrorChat.data.error.code === 'AI_PROVIDER_ERROR', '[Mock] Structured error object contains code');
+  assert(mockErrorChat.data.error.retryable !== undefined, '[Mock] Structured error object contains retryable boolean');
   assert(!JSON.stringify(mockErrorChat.data).includes('AI_API_KEY'), '[Mock] API key not leaked in error response');
   assert(!JSON.stringify(mockErrorChat.data).includes('mongodb'), '[Mock] MongoDB info not leaked in error response');
 

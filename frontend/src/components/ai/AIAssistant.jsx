@@ -119,13 +119,14 @@ const AIAssistant = ({ isOpen, onClose }) => {
     } catch (err) {
       console.error('AI chat request failed:', err);
       const status = err.response?.status;
-      
+      const serverMsg = err.response?.data?.error?.message || err.response?.data?.message;
+
       if (status === 503) {
         setIsUnconfigured(true);
       } else if (status === 400) {
-        setError('Please check your message and try again.');
+        setError(serverMsg || 'Please check your input message and try again.');
       } else {
-        setError('Unable to reach the AI assistant right now. Please try again.');
+        setError(serverMsg || 'Unable to reach the AI assistant right now. Please try again.');
       }
     } finally {
       setLoading(false);

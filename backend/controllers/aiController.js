@@ -23,11 +23,17 @@ const handleChat = async (req, res) => {
     
     return res.status(200).json(result);
   } catch (error) {
-    // Catch standard AI validation and 503 exceptions
+    // Catch standard AI validation, 503, and provider exceptions
     if (error instanceof AIError) {
       return res.status(error.statusCode).json({
         success: false,
-        message: error.message
+        message: error.message,
+        error: {
+          code: error.code || 'AI_PROVIDER_ERROR',
+          message: error.message,
+          provider: process.env.AI_PROVIDER || 'gemini',
+          retryable: error.retryable !== undefined ? error.retryable : true
+        }
       });
     }
 
@@ -35,7 +41,13 @@ const handleChat = async (req, res) => {
     console.error('AI Chat Error:', error.stack || error.message);
     return res.status(500).json({
       success: false,
-      message: 'An unexpected internal server error occurred.'
+      message: 'An unexpected internal server error occurred.',
+      error: {
+        code: 'INTERNAL_SERVER_ERROR',
+        message: 'An unexpected internal server error occurred.',
+        provider: process.env.AI_PROVIDER || 'gemini',
+        retryable: true
+      }
     });
   }
 };

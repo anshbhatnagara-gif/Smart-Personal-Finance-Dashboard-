@@ -1,15 +1,18 @@
 const ProviderFactory = require('./ProviderFactory');
 const { systemInstructions } = require('./prompts/systemInstructions');
 const { toolDefinitions } = require('./tools/definitions');
+const FinanceContextBuilder = require('./FinanceContextBuilder');
 
 /**
- * Custom Error wrapper for AI-specific exceptions.
+ * Custom Error wrapper for AI-specific exceptions with structured error support.
  */
 class AIError extends Error {
-  constructor(message, statusCode = 500) {
+  constructor(message, statusCode = 500, code = 'AI_PROVIDER_ERROR', retryable = true) {
     super(message);
     this.name = 'AIError';
     this.statusCode = statusCode;
+    this.code = code;
+    this.retryable = retryable;
   }
 }
 
@@ -23,43 +26,43 @@ class AIError extends Error {
 const validateChatPayload = (message, history) => {
   // Validate message
   if (message === undefined || message === null) {
-    throw new AIError('Message is required.', 400);
+    throw new AIError('Message is required.', 400, 'INVALID_PAYLOAD', false);
   }
   if (typeof message !== 'string') {
-    throw new AIError('Message must be a string.', 400);
+    throw new AIError('Message must be a string.', 400, 'INVALID_PAYLOAD', false);
   }
   const trimmed = message.trim();
   if (trimmed.length === 0) {
-    throw new AIError('Message cannot be empty or only whitespace.', 400);
+    throw new AIError('Message cannot be empty or only whitespace.', 400, 'EMPTY_MESSAGE', false);
   }
   if (trimmed.length > 2000) {
-    throw new AIError('Message payload too large. Maximum size is 2000 characters.', 400);
+    throw new AIError('Message payload too large. Maximum size is 2000 characters.', 400, 'PAYLOAD_TOO_LARGE', false);
   }
 
   // Validate history
   if (history !== undefined && history !== null) {
     if (!Array.isArray(history)) {
-      throw new AIError('History must be a valid array.', 400);
+      throw new AIError('History must be a valid array.', 400, 'INVALID_HISTORY', false);
     }
     if (history.length > 20) {
-      throw new AIError('History queue too large. Maximum size is 20 dialogue turns.', 400);
+      throw new AIError('History queue too large. Maximum size is 20 dialogue turns.', 400, 'HISTORY_TOO_LARGE', false);
     }
 
     const validRoles = ['user', 'assistant'];
     history.forEach((item, index) => {
       if (!item || typeof item !== 'object') {
-        throw new AIError(`Invalid history format at index ${index}. Must be an object.`, 400);
+        throw new AIError(`Invalid history format at index ${index}. Must be an object.`, 400, 'INVALID_HISTORY', false);
       }
       
       const { role, content } = item;
       if (!validRoles.includes(role)) {
-        throw new AIError(`Forbidden role "${role}" in history index ${index}. Only "user" and "assistant" are permitted.`, 400);
+        throw new AIError(`Forbidden role "${role}" in history index ${index}. Only "user" and "assistant" are permitted.`, 400, 'FORBIDDEN_ROLE', false);
       }
       if (typeof content !== 'string') {
-        throw new AIError(`Content must be a string in history index ${index}.`, 400);
+        throw new AIError(`Content must be a string in history index ${index}.`, 400, 'INVALID_HISTORY', false);
       }
       if (content.length > 4000) {
-        throw new AIError(`Dialogue content size exceeded in history index ${index}. Max 4000 chars.`, 400);
+        throw new AIError(`Dialogue content size exceeded in history index ${index}. Max 4000 chars.`, 400, 'HISTORY_ITEM_TOO_LARGE', false);
       }
     });
   }
@@ -88,17 +91,19 @@ const processChat = async (rawMessage, rawHistory, userId, req = null) => {
   // 3. Resolve AI provider instance
   const provider = ProviderFactory.getProvider(req);
   if (!provider) {
-    throw new AIError('AI provider is not configured. Please set the environment variables.', 503);
+    throw new AIError('AI provider is not configured. Please set the environment variables.', 503, 'AI_NOT_CONFIGURED', false);
   }
 
-  // 4. Executing conversation (For Phase 3.2A, provider is null so it throws 503 above)
+  // 4. Optionally assemble light financial context summary for high-level prompts
+  let dynamicInstructions = systemInstructions;
+
   try {
     const result = await provider.executeWithTools(
       message, 
       history, 
       toolDefinitions, 
       userId,
-      systemInstructions
+      dynamicInstructions
     );
     
     // Normalize return contract:
@@ -110,7 +115,11 @@ const processChat = async (rawMessage, rawHistory, userId, req = null) => {
       confirmation: result.confirmation || null
     };
   } catch (error) {
-    throw new AIError(`AI Provider error: ${error.message}`, 500);
+    if (error instanceof AIError) {
+      throw error;
+    }
+    const isQuotaOrTimeout = error.message.includes('quota') || error.message.includes('timeout');
+    throw new AIError(`AI Provider error: ${error.message}`, 500, 'AI_PROVIDER_ERROR', isQuotaOrTimeout);
   }
 };
 
