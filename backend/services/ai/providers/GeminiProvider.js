@@ -1,6 +1,7 @@
 const BaseProvider = require('../BaseProvider');
 const { GoogleGenAI } = require('@google/genai');
 const { EXPENSE_CATEGORIES } = require('../tools/definitions');
+const { AIError } = require('../errors');
 
 class GeminiProvider extends BaseProvider {
   constructor(apiKey = null) {
@@ -85,6 +86,32 @@ class GeminiProvider extends BaseProvider {
     } else {
       // Initialize the official Google Gen AI client
       this.ai = new GoogleGenAI({ apiKey: this.apiKey });
+    }
+  }
+
+  /**
+   * Helper method to execute model call with retry logic for transient rate-limit (429) errors.
+   */
+  async generateContentWithRetry(payload, maxAttempts = 3) {
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+      attempt++;
+      try {
+        return await this.ai.models.generateContent(payload);
+      } catch (error) {
+        const errorMsg = error.message || '';
+        const isRateLimit = errorMsg.includes('429') || errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('quota');
+        const isTransient5xx = errorMsg.includes('503') || errorMsg.includes('502') || errorMsg.includes('UNAVAILABLE');
+
+        if ((isRateLimit || isTransient5xx) && attempt < maxAttempts) {
+          const delayMs = attempt * 2000;
+          console.warn(`[GeminiProvider Retry Attempt ${attempt}/${maxAttempts}]: Transient error (${errorMsg.slice(0, 100)}). Retrying in ${delayMs}ms...`);
+          await new Promise((res) => setTimeout(res, delayMs));
+          continue;
+        }
+
+        throw error;
+      }
     }
   }
 
@@ -299,10 +326,6 @@ class GeminiProvider extends BaseProvider {
   }
 
   /**
-   * Executes a conversation cycle.
-   * Phase 3.3B: Real finance data reading and tool execution.
-   */
-  /**
    * Executes a conversation cycle with support for multi-tool reasoning loops.
    */
   async executeWithTools(userMessage, chatHistory = [], tools = [], userId, systemInstruction = '') {
@@ -352,8 +375,8 @@ class GeminiProvider extends BaseProvider {
       while (turnCount < MAX_TURNS) {
         turnCount++;
 
-        // Request model completion turn
-        let response = await this.ai.models.generateContent({
+        // Request model completion turn with retry support
+        let response = await this.generateContentWithRetry({
           model: this.modelName,
           contents,
           config: {
@@ -459,24 +482,30 @@ class GeminiProvider extends BaseProvider {
   }
 
   /**
-   * Safe operational error mapper.
+   * Safe operational error mapper converting internal exceptions into structured AIError instances.
    */
   handleError(error) {
+    if (error instanceof AIError) {
+      throw error;
+    }
+
     const errorMsg = error.message || '';
     console.error('[GeminiProvider Exception]:', error.stack || errorMsg);
 
-    // Filter out API keys, MongoDB names, or path structures
     if (errorMsg.includes('API key') || errorMsg.includes('API_KEY')) {
-      throw new Error('AI Assistant is not connected yet. Invalid API credentials.');
+      throw new AIError('AI Assistant is not connected yet. Invalid API credentials.', 401, 'AI_AUTH_ERROR', false);
     }
-    if (errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('quota')) {
-      throw new Error('AI Assistant is busy. Quota limits exceeded, please retry shortly.');
+    if (errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('429') || errorMsg.includes('quota')) {
+      throw new AIError('Gemini API free-tier rate limit reached. Please retry in a few moments or upgrade quota.', 429, 'AI_QUOTA_EXCEEDED', true);
+    }
+    if (errorMsg.includes('NOT_FOUND') || errorMsg.includes('404') || errorMsg.includes('no longer available')) {
+      throw new AIError(`Gemini model "${this.modelName}" was not found or is unavailable.`, 404, 'AI_MODEL_NOT_FOUND', false);
     }
     if (errorMsg.includes('timeout') || errorMsg.includes('ETIMEDOUT')) {
-      throw new Error('AI Assistant request timed out. Please try again.');
+      throw new AIError('AI Assistant request timed out. Please try again.', 504, 'AI_TIMEOUT', true);
     }
 
-    throw new Error('Unable to reach the AI assistant right now. Please try again.');
+    throw new AIError('Unable to reach the AI assistant right now. Please try again.', 500, 'AI_PROVIDER_ERROR', true);
   }
 }
 
