@@ -21,6 +21,7 @@ const READ_ONLY_TOOLS = new Set([
   'compareMonths',
   'analyzeSavings',
   'generateFinancialAlerts',
+  'recommendBudget',
 ]);
 
 class GroqProvider extends BaseProvider {
@@ -129,7 +130,7 @@ class GroqProvider extends BaseProvider {
   /**
    * Helper to execute chat completions with bounded exponential backoff for transient errors.
    */
-  async createChatCompletionWithRetry(payload, maxAttempts = 3) {
+  async createChatCompletionWithRetry(payload, maxAttempts = 5) {
     let attempt = 0;
     while (attempt < maxAttempts) {
       attempt++;
@@ -138,12 +139,12 @@ class GroqProvider extends BaseProvider {
       } catch (error) {
         const errorMsg = (error.message || '').toLowerCase();
         const status = error.status || (error.response && error.response.status);
-        const isRateLimit = status === 429 || errorMsg.includes('rate_limit') || errorMsg.includes('quota') || errorMsg.includes('429');
+        const isRateLimit = status === 429 || status === 413 || errorMsg.includes('rate_limit') || errorMsg.includes('quota') || errorMsg.includes('429') || errorMsg.includes('413') || errorMsg.includes('tpm') || errorMsg.includes('request too large');
         const isTransient5xx = status >= 500 && status <= 504;
         const isNetwork = errorMsg.includes('timeout') || errorMsg.includes('timed out') || errorMsg.includes('econnreset') || errorMsg.includes('etimedout');
 
         if ((isRateLimit || isTransient5xx || isNetwork) && attempt < maxAttempts) {
-          const delayMs = attempt * 1500;
+          const delayMs = isRateLimit ? attempt * 4000 : attempt * 1500;
           console.warn(`[GroqProvider Retry Attempt ${attempt}/${maxAttempts}]: Transient error (${errorMsg.slice(0, 100)}). Retrying in ${delayMs}ms...`);
           await new Promise((res) => setTimeout(res, delayMs));
           continue;
@@ -296,6 +297,12 @@ class GroqProvider extends BaseProvider {
     } else if (toolName === 'deleteIncome' || toolName === 'deleteExpense' || toolName === 'deleteBudget') {
       if (rawArgs.id && typeof rawArgs.id === 'string' && /^[0-9a-fA-F]{24}$/.test(rawArgs.id)) clean.id = rawArgs.id;
       if (rawArgs.month && monthRegex.test(rawArgs.month)) clean.month = rawArgs.month;
+    } else if (toolName === 'recommendBudget') {
+      if (rawArgs.month && monthRegex.test(rawArgs.month)) clean.month = rawArgs.month;
+      if (rawArgs.savingsTarget !== undefined && rawArgs.savingsTarget !== null) {
+        const st = parseFloat(rawArgs.savingsTarget);
+        if (!isNaN(st) && st >= 0 && st < 100000000) clean.savingsTarget = st;
+      }
     }
 
     return clean;
@@ -337,6 +344,7 @@ class GroqProvider extends BaseProvider {
       const MAX_TURNS = 5;
       let turnCount = 0;
       const executedToolCalls = [];
+      const executedToolSignatures = new Set();
 
       while (turnCount < MAX_TURNS) {
         turnCount++;
@@ -349,18 +357,19 @@ class GroqProvider extends BaseProvider {
             model: this.modelName,
             messages,
             tools: formattedTools.length > 0 ? formattedTools : undefined,
-            temperature: 0.2
+            temperature: 0.2,
+            max_tokens: 1024
           });
         } catch (callErr) {
           const errBody = callErr.error || (callErr.response && callErr.response.data) || {};
           const failedGen = errBody.failed_generation || callErr.message || '';
           if (failedGen && (errBody.code === 'tool_use_failed' || failedGen.includes('<function='))) {
-            const match = failedGen.match(/<function=([a-zA-Z0-9_-]+)\s*(\{.*?\})?\s*>?\s*<\/function>/s);
-            if (match) {
-              const name = match[1];
+            const funcMatch = failedGen.match(/<function=([a-zA-Z0-9_-]+)(?:[\(\=\s]*(\{.*?\})?\s*\)?)?\s*>?\s*<\/function>/s);
+            if (funcMatch) {
+              const name = funcMatch[1];
               let args = {};
               try {
-                if (match[2]) args = JSON.parse(match[2].trim());
+                if (funcMatch[2]) args = JSON.parse(funcMatch[2].trim());
               } catch (e) {
                 args = {};
               }
@@ -372,6 +381,16 @@ class GroqProvider extends BaseProvider {
                   arguments: JSON.stringify(args)
                 }
               };
+            } else {
+              const cleanText = failedGen.replace(/<function=.*?<\/function>/gs, '').trim();
+              if (cleanText.length > 0) {
+                return {
+                  message: cleanText,
+                  type: 'text',
+                  toolCalls: executedToolCalls,
+                  confirmation: null
+                };
+              }
             }
           }
 
@@ -395,9 +414,6 @@ class GroqProvider extends BaseProvider {
 
         // Check if tool_calls were returned
         if (message.tool_calls && message.tool_calls.length > 0) {
-          // Append assistant message with tool calls to context
-          messages.push(message);
-
           const toolCall = message.tool_calls[0];
           const funcName = toolCall.function.name;
           let rawArgs = {};
@@ -407,6 +423,19 @@ class GroqProvider extends BaseProvider {
             rawArgs = {};
           }
 
+          const sanitizedArgs = this.validateAndSanitizeArgs(funcName, rawArgs);
+          const toolSig = `${funcName}:${JSON.stringify(sanitizedArgs)}`;
+
+          // DUPLICATE TOOL CALL PREVENTION: Break loop to synthesize final answer if identical call is repeated
+          if (executedToolSignatures.has(toolSig)) {
+            console.warn(`[GroqProvider] Duplicate tool call detected ("${toolSig}"). Halting tool loop to synthesize final answer.`);
+            break;
+          }
+          executedToolSignatures.add(toolSig);
+
+          // Append assistant message with tool calls to context
+          messages.push(message);
+
           executedToolCalls.push({ name: funcName, args: rawArgs });
 
           const matchedTool = tools.find((t) => t.name === funcName);
@@ -415,7 +444,6 @@ class GroqProvider extends BaseProvider {
           // WRITE TOOLS: Return confirmation proposal immediately
           if (classification === 'write') {
             const { createPendingAction } = require('../pendingActions');
-            const sanitizedArgs = this.validateAndSanitizeArgs(funcName, rawArgs);
             const pending = createPendingAction(userId, funcName, sanitizedArgs);
 
             return {
@@ -441,7 +469,6 @@ class GroqProvider extends BaseProvider {
             };
           }
 
-          const sanitizedArgs = this.validateAndSanitizeArgs(funcName, rawArgs);
           const { executeTool } = require('../tools/handlers');
           let toolResult = await executeTool(userId, funcName, sanitizedArgs);
 
@@ -463,17 +490,50 @@ class GroqProvider extends BaseProvider {
           continue;
         }
 
-        // Return final text message
-        return {
-          message: message.content || 'No response generated.',
-          type: 'text',
-          toolCalls: executedToolCalls,
-          confirmation: null
-        };
+        // Return final text message if assistant content is present
+        if (message.content && message.content.trim().length > 0) {
+          return {
+            message: message.content.trim(),
+            type: 'text',
+            toolCalls: executedToolCalls,
+            confirmation: null
+          };
+        }
+      }
+
+      // GRACEFUL SYNTHESIS: If turn limit reached or duplicate tool call detected, force a final synthesis completion turn without tools
+      console.log('[GroqProvider] Synthesizing final answer from collected tool results...');
+      try {
+        const synthesisPrompt = [
+          ...messages,
+          {
+            role: 'user',
+            content: 'Synthesize a complete final answer based on all gathered data and tool results above. Do NOT request any tools. Ensure your response includes: 1. Financial situation summary, 2. Important observations, 3. Exactly 5 practical suggestions, using exact numbers from the data.'
+          }
+        ];
+
+        const synthResponse = await this.createChatCompletionWithRetry({
+          model: this.modelName,
+          messages: synthesisPrompt,
+          temperature: 0.3,
+          max_tokens: 1024
+        });
+
+        const finalContent = synthResponse?.choices?.[0]?.message?.content;
+        if (finalContent && finalContent.trim().length > 0) {
+          return {
+            message: finalContent.trim(),
+            type: 'text',
+            toolCalls: executedToolCalls,
+            confirmation: null
+          };
+        }
+      } catch (synthErr) {
+        console.warn('[GroqProvider] Final synthesis error:', synthErr.message);
       }
 
       return {
-        message: 'Completed maximum analysis steps.',
+        message: 'Aapki financial situation ka analysis complete ho gaya hai. Kripya apna dashboard summary check karein.',
         type: 'text',
         toolCalls: executedToolCalls,
         confirmation: null

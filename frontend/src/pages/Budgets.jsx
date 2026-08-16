@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { budgetAPI, getErrorMessage } from '../services/api';
 import BudgetCard from '../components/BudgetCard';
 import Loading from '../components/Loading';
-import { AlertCircle, Target, ShieldAlert, Sparkles } from 'lucide-react';
+import { AlertCircle, Target, Sparkles, PieChart } from 'lucide-react';
 
 const Budgets = () => {
-  // Get current YYYY-MM month in local time
   const getCurrentMonthString = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -18,7 +17,7 @@ const Budgets = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Form Field
+  // Form State
   const [limitInput, setLimitInput] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
@@ -55,8 +54,9 @@ const Budgets = () => {
     setError('');
     setSuccessMsg('');
 
-    if (parseFloat(limitInput) < 0) {
-      setError('Budget limit cannot be negative');
+    const parsedLimit = parseFloat(limitInput);
+    if (isNaN(parsedLimit) || parsedLimit < 0) {
+      setError('Budget limit cannot be negative or invalid');
       return;
     }
 
@@ -64,7 +64,7 @@ const Budgets = () => {
 
     try {
       const payload = {
-        monthlyBudget: parseFloat(limitInput),
+        monthlyBudget: parsedLimit,
         month: selectedMonth
       };
       
@@ -79,6 +79,14 @@ const Budgets = () => {
     } finally {
       setSubmitLoading(false);
     }
+  };
+
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount || 0);
   };
 
   return (
@@ -111,6 +119,8 @@ const Budgets = () => {
               monthlyBudget={budgetProgress ? budgetProgress.monthlyBudget : 0}
               totalSpent={budgetProgress ? budgetProgress.totalSpent : 0}
               remaining={budgetProgress ? budgetProgress.remaining : 0}
+              savings={budgetProgress ? budgetProgress.savings : 0}
+              status={budgetProgress ? budgetProgress.status : 'NO_BUDGET'}
               isExceeded={budgetProgress ? budgetProgress.isExceeded : false}
             />
           )}
@@ -122,7 +132,7 @@ const Budgets = () => {
             Configure Monthly Limit
           </h3>
           <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-            Set a monthly spending budget. You'll receive real-time alerts if your expenses exceed this limit.
+            Set a monthly spending limit. Real-time alerts will notify you if expenses approach or exceed this limit.
           </p>
 
           {/* Form alerts */}
@@ -163,12 +173,12 @@ const Budgets = () => {
           {/* Budget Setting Form */}
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Monthly Limit (USD)</label>
+              <label className="form-label">Monthly Limit (₹)</label>
               <input 
                 type="number" 
-                step="0.01"
+                step="1"
                 className="form-control" 
-                placeholder="e.g. 2000"
+                placeholder="e.g. 5000"
                 value={limitInput}
                 onChange={(e) => setLimitInput(e.target.value)}
                 required
@@ -186,6 +196,42 @@ const Budgets = () => {
           </form>
         </div>
       </div>
+
+      {/* Category Spending Breakdown Panel */}
+      {budgetProgress && budgetProgress.categorySpending && budgetProgress.categorySpending.length > 0 && (
+        <div className="panel animate-fade" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <PieChart size={18} style={{ color: 'var(--accent)' }} />
+            <h3 style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+              Category Spending Breakdown ({selectedMonth})
+            </h3>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+            {budgetProgress.categorySpending.map((cat, idx) => (
+              <div 
+                key={idx} 
+                style={{
+                  padding: '12px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid var(--border)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{cat.category}</span>
+                  <span style={{ color: 'var(--accent)', fontWeight: 600 }}>{cat.percentage}%</span>
+                </div>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  {formatCurrency(cat.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
     </div>
   );

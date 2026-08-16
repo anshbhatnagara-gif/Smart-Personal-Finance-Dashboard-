@@ -149,19 +149,132 @@ const getBudgetProgressHandler = async (userId, args = {}) => {
   const startOfMonth = new Date(year, monthNum - 1, 1, 0, 0, 0, 0);
   const endOfMonth = new Date(year, monthNum, 0, 23, 59, 59, 999);
 
-  const expenses = await Expense.find({
-    user: new mongoose.Types.ObjectId(userId),
-    date: { $gte: startOfMonth, $lte: endOfMonth }
+  const [expenses, incomes] = await Promise.all([
+    Expense.find({ user: new mongoose.Types.ObjectId(userId), date: { $gte: startOfMonth, $lte: endOfMonth } }),
+    Income.find({ user: new mongoose.Types.ObjectId(userId), date: { $gte: startOfMonth, $lte: endOfMonth } })
+  ]);
+
+  const totalSpent = expenses.reduce((sum, item) => sum + (item.amount || 0), 0);
+  const totalIncome = incomes.reduce((sum, item) => sum + (item.amount || 0), 0);
+  const remaining = limit - totalSpent;
+  const savings = totalIncome - totalSpent;
+  const savingsRate = totalIncome > 0 ? parseFloat(((savings / totalIncome) * 100).toFixed(2)) : 0;
+  const usedPercentage = limit > 0 ? parseFloat(((totalSpent / limit) * 100).toFixed(2)) : 0;
+
+  let status = 'NO_BUDGET';
+  if (limit > 0) {
+    if (usedPercentage > 100) status = 'OVER_BUDGET';
+    else if (usedPercentage > 85) status = 'NEAR_LIMIT';
+    else if (usedPercentage > 70) status = 'ON_TRACK';
+    else status = 'UNDER_BUDGET';
+  }
+
+  const categoryMap = {};
+  expenses.forEach(e => {
+    categoryMap[e.category] = (categoryMap[e.category] || 0) + e.amount;
   });
 
-  const totalSpent = expenses.reduce((sum, item) => sum + item.amount, 0);
+  const categorySpending = Object.entries(categoryMap).map(([category, amount]) => ({
+    category,
+    amount,
+    percentage: totalSpent > 0 ? parseFloat(((amount / totalSpent) * 100).toFixed(2)) : 0
+  })).sort((a, b) => b.amount - a.amount);
+
+  const highestCategory = categorySpending.length > 0 ? categorySpending[0] : null;
 
   return {
     month,
+    totalIncome,
     monthlyBudget: limit,
     totalSpent,
-    remaining: limit - totalSpent,
+    remaining,
+    savings,
+    savingsRate,
+    usedPercentage,
+    status,
     isExceeded: totalSpent > limit,
+    highestCategory,
+    categorySpending
+  };
+};
+
+const recommendBudgetHandler = async (userId, args = {}) => {
+  const month = args.month || getCurrentMonthString();
+
+  const [year, monthNum] = month.split('-').map(Number);
+  const startOfMonth = new Date(year, monthNum - 1, 1, 0, 0, 0, 0);
+  const endOfMonth = new Date(year, monthNum, 0, 23, 59, 59, 999);
+
+  const [incomes, expenses, allTimeExpenses, currentBudget] = await Promise.all([
+    Income.find({ user: new mongoose.Types.ObjectId(userId), date: { $gte: startOfMonth, $lte: endOfMonth } }),
+    Expense.find({ user: new mongoose.Types.ObjectId(userId), date: { $gte: startOfMonth, $lte: endOfMonth } }),
+    Expense.find({ user: new mongoose.Types.ObjectId(userId) }),
+    Budget.findOne({ user: new mongoose.Types.ObjectId(userId), month })
+  ]);
+
+  const actualIncome = incomes.reduce((sum, i) => sum + i.amount, 0);
+  const currentSpending = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const totalAllTimeSpending = allTimeExpenses.reduce((sum, e) => sum + e.amount, 0);
+  const existingBudget = currentBudget ? currentBudget.monthlyBudget : 0;
+
+  const categoryMap = {};
+  expenses.forEach(e => {
+    categoryMap[e.category] = (categoryMap[e.category] || 0) + e.amount;
+  });
+
+  const uniqueMonths = new Set(allTimeExpenses.map(e => e.date ? e.date.toISOString().slice(0, 7) : month));
+  const monthCount = Math.max(1, uniqueMonths.size);
+  const averageExpenses = parseFloat((totalAllTimeSpending / monthCount).toFixed(2));
+  const hasEnoughHistoricalData = monthCount >= 2 || allTimeExpenses.length >= 5;
+
+  const specifiedSavingsTarget = args.savingsTarget !== undefined && args.savingsTarget !== null ? parseFloat(args.savingsTarget) : null;
+  const targetSavings = specifiedSavingsTarget !== null && !isNaN(specifiedSavingsTarget) && specifiedSavingsTarget >= 0
+    ? specifiedSavingsTarget
+    : (actualIncome > 0 ? parseFloat((actualIncome * 0.20).toFixed(2)) : 0);
+
+  let recommendedMonthlyBudget = 0;
+  let calculationMethod = '';
+
+  if (actualIncome > 0) {
+    recommendedMonthlyBudget = Math.max(0, parseFloat((actualIncome - targetSavings).toFixed(2)));
+    calculationMethod = `Income (₹${actualIncome}) minus target savings (₹${targetSavings})`;
+  } else if (currentSpending > 0 || averageExpenses > 0) {
+    const baseAmount = currentSpending > 0 ? currentSpending : averageExpenses;
+    recommendedMonthlyBudget = parseFloat((baseAmount * 1.05).toFixed(2));
+    calculationMethod = `Based on current/average expenses (₹${baseAmount}) plus 5% contingency buffer`;
+  } else {
+    recommendedMonthlyBudget = 0;
+    calculationMethod = 'Insufficient financial data logged. Start by adding income and expense entries.';
+  }
+
+  const categoryRecommendations = Object.entries(categoryMap).map(([category, spent]) => {
+    const share = currentSpending > 0 ? spent / currentSpending : 0;
+    const recommendedCategoryLimit = parseFloat((recommendedMonthlyBudget * share).toFixed(2));
+    const isOver = spent > recommendedCategoryLimit;
+    return {
+      category,
+      spent,
+      recommendedCategoryLimit,
+      status: isOver ? 'OVER' : 'OK'
+    };
+  }).sort((a, b) => b.spent - a.spent);
+
+  const overspendingCategories = categoryRecommendations.filter(c => c.status === 'OVER').map(c => c.category);
+
+  return {
+    month,
+    actualIncome,
+    currentSpending,
+    averageExpenses,
+    existingBudget,
+    recommendedMonthlyBudget,
+    targetSavings,
+    projectedSavings: Math.max(0, actualIncome - recommendedMonthlyBudget),
+    projectedSavingsRate: actualIncome > 0 ? parseFloat((((actualIncome - recommendedMonthlyBudget) / actualIncome) * 100).toFixed(2)) : 0,
+    calculationMethod,
+    hasEnoughHistoricalData,
+    categoryRecommendations,
+    overspendingCategories
   };
 };
 
@@ -667,6 +780,8 @@ const executeTool = async (userId, toolName, args = {}) => {
       return await analyzeSavingsHandler(userId, args);
     case 'generateFinancialAlerts':
       return await generateFinancialAlertsHandler(userId, args);
+    case 'recommendBudget':
+      return await recommendBudgetHandler(userId, args);
 
     // Write Actions (Requires Client Side Consent Validation)
     case 'createIncome':
