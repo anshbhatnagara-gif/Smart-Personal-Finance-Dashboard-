@@ -119,7 +119,10 @@ class GroqProvider extends BaseProvider {
         }
       };
     } else {
-      this.groq = new Groq({ apiKey: this.apiKey });
+      this.groq = new Groq({
+        apiKey: this.apiKey,
+        timeout: 45000
+      });
     }
   }
 
@@ -137,7 +140,7 @@ class GroqProvider extends BaseProvider {
         const status = error.status || (error.response && error.response.status);
         const isRateLimit = status === 429 || errorMsg.includes('rate_limit') || errorMsg.includes('quota') || errorMsg.includes('429');
         const isTransient5xx = status >= 500 && status <= 504;
-        const isNetwork = errorMsg.includes('timeout') || errorMsg.includes('econnreset') || errorMsg.includes('etimedout');
+        const isNetwork = errorMsg.includes('timeout') || errorMsg.includes('timed out') || errorMsg.includes('econnreset') || errorMsg.includes('etimedout');
 
         if ((isRateLimit || isTransient5xx || isNetwork) && attempt < maxAttempts) {
           const delayMs = attempt * 1500;
