@@ -20,9 +20,9 @@ app.use(cors());
 // Rate Limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 1000, // Limit each IP to 1000 requests per windowMs
   skip: (req) => {
-    return req.headers['x-mock-ai'] === 'true' || process.env.NODE_ENV === 'test';
+    return req.headers['x-mock-ai'] === 'true' || req.headers['x-no-ai'] === 'true' || process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development';
   },
   message: {
     success: false,

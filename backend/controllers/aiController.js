@@ -31,7 +31,7 @@ const handleChat = async (req, res) => {
         error: {
           code: error.code || 'AI_PROVIDER_ERROR',
           message: error.message,
-          provider: process.env.AI_PROVIDER || 'gemini',
+          provider: process.env.AI_PROVIDER || 'groq',
           retryable: error.retryable !== undefined ? error.retryable : true
         }
       });
@@ -45,7 +45,7 @@ const handleChat = async (req, res) => {
       error: {
         code: 'INTERNAL_SERVER_ERROR',
         message: 'An unexpected internal server error occurred.',
-        provider: process.env.AI_PROVIDER || 'gemini',
+        provider: process.env.AI_PROVIDER || 'groq',
         retryable: true
       }
     });

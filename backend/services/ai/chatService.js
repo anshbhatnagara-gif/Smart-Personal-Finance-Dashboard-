@@ -82,8 +82,15 @@ const processChat = async (rawMessage, rawHistory, userId, req = null) => {
     throw new AIError('AI provider is not configured. Please set the environment variables.', 503, 'AI_NOT_CONFIGURED', false);
   }
 
-  // 4. Optionally assemble light financial context summary for high-level prompts
+  // 4. Assemble live user financial context summary into system instructions
   let dynamicInstructions = systemInstructions;
+  try {
+    const userContext = await FinanceContextBuilder.buildUserContext(userId);
+    const contextText = FinanceContextBuilder.formatContextText(userContext);
+    dynamicInstructions = `${systemInstructions}\n\n${contextText}`;
+  } catch (ctxErr) {
+    console.warn('[chatService] Context builder warning:', ctxErr.message);
+  }
 
   try {
     const result = await provider.executeWithTools(
@@ -106,7 +113,7 @@ const processChat = async (rawMessage, rawHistory, userId, req = null) => {
     if (error instanceof AIError) {
       throw error;
     }
-    const isQuotaOrTimeout = error.message.includes('quota') || error.message.includes('timeout');
+    const isQuotaOrTimeout = error.message.includes('rate_limit') || error.message.includes('quota') || error.message.includes('timeout');
     throw new AIError(`AI Provider error: ${error.message}`, 500, 'AI_PROVIDER_ERROR', isQuotaOrTimeout);
   }
 };

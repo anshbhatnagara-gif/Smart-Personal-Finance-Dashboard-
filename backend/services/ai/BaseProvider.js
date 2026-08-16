@@ -1,6 +1,6 @@
 /**
  * Base abstract class defining the interface for all AI model providers.
- * All concrete providers (e.g. GeminiProvider, OpenAIProvider) must extend this class.
+ * All concrete providers (e.g. GroqProvider) must extend this class.
  */
 class BaseProvider {
   /**

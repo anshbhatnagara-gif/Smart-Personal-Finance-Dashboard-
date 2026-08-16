@@ -1,3 +1,5 @@
+const GroqProvider = require('./providers/GroqProvider');
+
 /**
  * Factory class to instantiate and fetch the configured AI provider.
  * Keeps the application decoupled from concrete model provider adapters.
@@ -14,32 +16,25 @@ class ProviderFactory {
       return null;
     }
 
-    const provider = process.env.AI_PROVIDER;
-
-    if (!provider) {
-      return null;
-    }
+    const provider = process.env.AI_PROVIDER || 'groq';
 
     switch (provider.toLowerCase()) {
-      case 'gemini': {
-        let apiKey = process.env.AI_API_KEY;
-        
+      case 'groq': {
+        let apiKey = process.env.GROQ_API_KEY;
+        const model = process.env.GROQ_MODEL;
+
         // If testing via header and not in production, use mock key
         if (req && req.headers && req.headers['x-mock-ai'] === 'true' && process.env.NODE_ENV !== 'production') {
           apiKey = 'mock-testing-key';
         }
 
         if (!apiKey || apiKey.trim() === '') {
-          console.warn('[ProviderFactory] Warning: AI_API_KEY is not configured. AI Assistant is disabled.');
+          console.warn('[ProviderFactory] Warning: GROQ_API_KEY is not configured. AI Assistant is disabled.');
           return null;
         }
-        
-        const GeminiProvider = require('./providers/GeminiProvider');
-        return new GeminiProvider(apiKey);
+
+        return new GroqProvider(apiKey, model);
       }
-      
-      case 'openai':
-        return null;
 
       default:
         console.warn(`[ProviderFactory]: Unknown or unconfigured AI provider option: "${provider}"`);

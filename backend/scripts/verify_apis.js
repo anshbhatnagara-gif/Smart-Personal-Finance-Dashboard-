@@ -559,7 +559,7 @@ const runTests = async () => {
   assert(mockErrorChat.data.success === false, '[Mock] Error response success is false');
   assert(mockErrorChat.data.error && typeof mockErrorChat.data.error.code === 'string', '[Mock] Structured error object contains code');
   assert(mockErrorChat.data.error.retryable !== undefined, '[Mock] Structured error object contains retryable boolean');
-  assert(!JSON.stringify(mockErrorChat.data).includes('AI_API_KEY'), '[Mock] API key not leaked in error response');
+  assert(!JSON.stringify(mockErrorChat.data).includes('GROQ_API_KEY'), '[Mock] API key not leaked in error response');
   assert(!JSON.stringify(mockErrorChat.data).includes('mongodb'), '[Mock] MongoDB info not leaked in error response');
 
   // 9.7 userId injection blocked even with mock provider
@@ -701,7 +701,7 @@ const runTests = async () => {
   assert(resInsights.data.insights[0].type === 'budget', 'First insight type matches mock');
   assert(typeof resInsights.data.summary === 'string', 'Summary is returned as string');
   assert(resInsights.data.summary.includes('Simulated'), 'Summary text matches mock text');
-  assert(!JSON.stringify(resInsights.data).includes('AI_API_KEY'), 'API key not leaked in insights response');
+  assert(!JSON.stringify(resInsights.data).includes('GROQ_API_KEY'), 'API key not leaked in insights response');
 
   // 11.3 analyzeSpending tool execution & isolation
   const resAnalyzeSpending = await request('/ai/chat', {
