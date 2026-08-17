@@ -247,9 +247,15 @@ const recommendBudgetHandler = async (userId, args = {}) => {
     calculationMethod = 'Insufficient financial data logged. Start by adding income and expense entries.';
   }
 
+  const { normalizeBudgetCategories } = require('../utils/budgetCalculator');
+  const normalizedAllocations = normalizeBudgetCategories(recommendedMonthlyBudget, [], categoryMap);
+  const allocationLookup = {};
+  normalizedAllocations.forEach(a => {
+    allocationLookup[a.category] = a.amount;
+  });
+
   const categoryRecommendations = Object.entries(categoryMap).map(([category, spent]) => {
-    const share = currentSpending > 0 ? spent / currentSpending : 0;
-    const recommendedCategoryLimit = parseFloat((recommendedMonthlyBudget * share).toFixed(2));
+    const recommendedCategoryLimit = allocationLookup[category] || 0;
     const isOver = spent > recommendedCategoryLimit;
     return {
       category,

@@ -278,18 +278,70 @@ const handleConfirm = async (req, res) => {
 
       case 'createBudget':
       case 'updateBudget': {
-        let budget = await Budget.findOne({ user: new mongoose.Types.ObjectId(req.user.id), month: args.month });
+        const {
+          parseIndianNumber,
+          normalizeBudgetCategories,
+          validateBudgetInvariants
+        } = require('../services/ai/utils/budgetCalculator');
+
+        const budgetMonth = args.month || getCurrentMonthString();
+        const numericBudget = parseIndianNumber(args.monthlyBudget);
+
+        if (!numericBudget || numericBudget <= 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'Monthly budget limit must be a positive number greater than 0.'
+          });
+        }
+
+        // Normalize categories to ensure exact sum match
+        const normalizedCategories = normalizeBudgetCategories(numericBudget, args.categories);
+        const invariantCheck = validateBudgetInvariants(numericBudget, normalizedCategories);
+        if (!invariantCheck.valid) {
+          return res.status(400).json({
+            success: false,
+            message: invariantCheck.message
+          });
+        }
+
+        const categoryDocs = normalizedCategories.map(c => ({
+          category: c.category,
+          allocatedAmount: c.amount
+        }));
+
+        let budget = await Budget.findOne({ user: new mongoose.Types.ObjectId(req.user.id), month: budgetMonth });
         if (budget) {
-          budget.monthlyBudget = parseFloat(args.monthlyBudget);
+          budget.monthlyBudget = numericBudget;
+          budget.categories = categoryDocs;
           await budget.save();
         } else {
           budget = await Budget.create({
             user: new mongoose.Types.ObjectId(req.user.id),
-            month: args.month,
-            monthlyBudget: parseFloat(args.monthlyBudget)
+            month: budgetMonth,
+            monthlyBudget: numericBudget,
+            categories: categoryDocs
           });
         }
-        result = budget;
+
+        // AUTHORITATIVE POST-WRITE DATABASE VERIFICATION
+        const verifiedBudget = await Budget.findOne({
+          user: new mongoose.Types.ObjectId(req.user.id),
+          month: budgetMonth
+        });
+
+        if (
+          !verifiedBudget ||
+          verifiedBudget.user.toString() !== req.user.id.toString() ||
+          verifiedBudget.monthlyBudget !== numericBudget ||
+          verifiedBudget.month !== budgetMonth
+        ) {
+          return res.status(500).json({
+            success: false,
+            message: 'Database verification failed for budget creation.'
+          });
+        }
+
+        result = verifiedBudget;
         break;
       }
 

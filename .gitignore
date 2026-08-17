@@ -13,7 +13,7 @@ backend/.env
 
 # Production Builds & Output
 dist/
-dist-ssr/
+dist-ssr/ 
 frontend/dist/
 build/
 

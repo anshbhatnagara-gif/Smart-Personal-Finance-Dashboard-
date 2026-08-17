@@ -17,6 +17,19 @@ const budgetSchema = new mongoose.Schema(
       required: [true, 'Please specify the month (YYYY-MM)'],
       match: [/^\d{4}-\d{2}$/, 'Please specify month in YYYY-MM format'],
     },
+    categories: [
+      {
+        category: {
+          type: String,
+          required: true,
+        },
+        allocatedAmount: {
+          type: Number,
+          required: true,
+          min: [0, 'Category allocation cannot be negative'],
+        }
+      }
+    ],
   },
   {
     timestamps: true,

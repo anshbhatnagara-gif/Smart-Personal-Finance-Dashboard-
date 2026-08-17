@@ -116,10 +116,45 @@ const AIConfirmation = ({ confirmation, onConfirmSuccess, onCancel }) => {
         )}
         {args.monthlyBudget && (
           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Budget Limit:</span>
-            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
-              ₹{parseFloat(args.monthlyBudget).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            <span>Monthly Budget:</span>
+            <span style={{ fontWeight: 700, color: 'var(--accent)', fontSize: '0.92rem' }}>
+              ₹{parseFloat(args.monthlyBudget).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
             </span>
+          </div>
+        )}
+        {args.isExistingBudget && (
+          <div style={{
+            padding: '6px 8px',
+            borderRadius: 'var(--radius-sm)',
+            background: 'var(--warning-light)',
+            color: 'var(--warning)',
+            fontSize: '0.75rem',
+            fontWeight: 500
+          }}>
+            Existing budget for this month: ₹{parseFloat(args.existingBudgetAmount || 0).toLocaleString('en-IN')}. Approving will update it.
+          </div>
+        )}
+        {Array.isArray(args.categories) && args.categories.length > 0 && (
+          <div style={{ marginTop: '8px', borderTop: '1px solid var(--border)', paddingTop: '8px' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Category Breakdown
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'rgba(0,0,0,0.1)', borderRadius: 'var(--radius-sm)', padding: '8px' }}>
+              {args.categories.map((cat, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>{cat.category}:</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                    ₹{parseFloat(cat.amount).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  </span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', borderTop: '1px dashed var(--border)', paddingTop: '4px', marginTop: '2px', fontWeight: 700 }}>
+                <span style={{ color: 'var(--text-primary)' }}>Total:</span>
+                <span style={{ color: 'var(--accent)' }}>
+                  ₹{parseFloat(args.monthlyBudget || args.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </span>
+              </div>
+            </div>
           </div>
         )}
         {(args.description || args.notes) && (

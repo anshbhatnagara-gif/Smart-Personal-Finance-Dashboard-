@@ -122,35 +122,75 @@ class GroqProvider extends BaseProvider {
     } else {
       this.groq = new Groq({
         apiKey: this.apiKey,
-        timeout: 45000
+        timeout: 90000
       });
     }
   }
 
   /**
-   * Helper to execute chat completions with bounded exponential backoff for transient errors.
+   * Helper to execute chat completions with multi-model fallback and bounded exponential backoff.
    */
-  async createChatCompletionWithRetry(payload, maxAttempts = 5) {
-    let attempt = 0;
-    while (attempt < maxAttempts) {
-      attempt++;
-      try {
-        return await this.groq.chat.completions.create(payload);
-      } catch (error) {
-        const errorMsg = (error.message || '').toLowerCase();
-        const status = error.status || (error.response && error.response.status);
-        const isRateLimit = status === 429 || status === 413 || errorMsg.includes('rate_limit') || errorMsg.includes('quota') || errorMsg.includes('429') || errorMsg.includes('413') || errorMsg.includes('tpm') || errorMsg.includes('request too large');
-        const isTransient5xx = status >= 500 && status <= 504;
-        const isNetwork = errorMsg.includes('timeout') || errorMsg.includes('timed out') || errorMsg.includes('econnreset') || errorMsg.includes('etimedout');
+  async createChatCompletionWithRetry(payload, maxAttempts = 3) {
+    const fallbackModels = [this.modelName, 'llama-3.1-8b-instant', 'openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'llama-3.3-70b-versatile'].filter((m, i, arr) => m && arr.indexOf(m) === i);
+    
+    for (let modelIdx = 0; modelIdx < fallbackModels.length; modelIdx++) {
+      const currentModel = fallbackModels[modelIdx];
+      const modelPayload = { ...payload, model: currentModel };
+      
+      let attempt = 0;
+      while (attempt < maxAttempts) {
+        attempt++;
+        try {
+          return await this.groq.chat.completions.create(modelPayload);
+        } catch (error) {
+          const errorMsg = (error.message || '').toLowerCase();
+          const status = error.status || (error.response && error.response.status);
+          const errBody = error.error || (error.response && error.response.data) || {};
+          const isToolCallError = status === 400 && (errorMsg.includes('failed to call a function') || errBody.failed_generation || errBody.code === 'tool_use_failed' || errorMsg.includes('tool_use_failed'));
 
-        if ((isRateLimit || isTransient5xx || isNetwork) && attempt < maxAttempts) {
-          const delayMs = isRateLimit ? attempt * 4000 : attempt * 1500;
-          console.warn(`[GroqProvider Retry Attempt ${attempt}/${maxAttempts}]: Transient error (${errorMsg.slice(0, 100)}). Retrying in ${delayMs}ms...`);
-          await new Promise((res) => setTimeout(res, delayMs));
-          continue;
+          // If Groq tool parse error with failed_generation, rethrow immediately for executeWithTools extraction
+          if (isToolCallError) {
+            throw error;
+          }
+
+          const isTpdLimit = errorMsg.includes('tokens per day') || errorMsg.includes('tpd') || errorMsg.includes('daily limit');
+          const isRateLimit = status === 429 || status === 413 || errorMsg.includes('rate_limit') || errorMsg.includes('quota') || errorMsg.includes('429') || errorMsg.includes('413') || errorMsg.includes('tpm') || errorMsg.includes('request too large');
+          const isTransient5xx = status >= 500 && status <= 504;
+          const isNetwork = errorMsg.includes('timeout') || errorMsg.includes('timed out') || errorMsg.includes('econnreset') || errorMsg.includes('etimedout') || errorMsg.includes('connection error') || errorMsg.includes('fetch failed') || errorMsg.includes('enotfound') || errorMsg.includes('socket');
+
+          // If daily quota exceeded on this model, switch immediately to next fallback model
+          if (isTpdLimit && modelIdx < fallbackModels.length - 1) {
+            console.warn(`[GroqProvider Model Fallback]: Model ${currentModel} daily quota reached. Switching to fallback model: ${fallbackModels[modelIdx + 1]}`);
+            break;
+          }
+
+          if ((isRateLimit || isTransient5xx || isNetwork) && attempt < maxAttempts) {
+            let delayMs = isRateLimit ? attempt * 2000 : attempt * 500;
+            if (isRateLimit) {
+              const waitMatch = errorMsg.match(/try again in ([\d\.]+)s/i);
+              if (waitMatch && waitMatch[1]) {
+                const waitSec = parseFloat(waitMatch[1]);
+                if (waitSec <= 15) {
+                  delayMs = Math.ceil(waitSec * 1000) + 600;
+                } else if (modelIdx < fallbackModels.length - 1) {
+                  console.warn(`[GroqProvider Model Fallback]: Rate limit wait is long (${waitSec}s). Switching to ${fallbackModels[modelIdx + 1]}...`);
+                  break;
+                }
+              }
+            }
+            console.warn(`[GroqProvider Retry Attempt ${attempt}/${maxAttempts}]: Transient error (${errorMsg.slice(0, 100)}). Retrying in ${delayMs}ms...`);
+            await new Promise((res) => setTimeout(res, delayMs));
+            continue;
+          }
+
+          // If last attempt on this model and we have more models, try next model
+          if (modelIdx < fallbackModels.length - 1) {
+            console.warn(`[GroqProvider Model Fallback]: Model ${currentModel} failed (${errorMsg.slice(0, 80)}). Switching to ${fallbackModels[modelIdx + 1]}...`);
+            break;
+          }
+
+          throw error;
         }
-
-        throw error;
       }
     }
   }
@@ -289,10 +329,19 @@ class GroqProvider extends BaseProvider {
       if (rawArgs.date && dateRegex.test(rawArgs.date)) clean.date = rawArgs.date;
       if (rawArgs.description && typeof rawArgs.description === 'string' && rawArgs.description.length <= 500 && !hasOperator(rawArgs.description)) clean.description = rawArgs.description.trim();
     } else if (toolName === 'createBudget' || toolName === 'updateBudget') {
+      const { parseIndianNumber } = require('../utils/budgetCalculator');
       if (rawArgs.month && monthRegex.test(rawArgs.month)) clean.month = rawArgs.month;
       if (rawArgs.monthlyBudget !== undefined) {
-        const bud = parseFloat(rawArgs.monthlyBudget);
-        if (!isNaN(bud) && bud >= 0 && bud < 100000000) clean.monthlyBudget = bud;
+        const bud = parseIndianNumber(rawArgs.monthlyBudget);
+        if (bud !== null && bud >= 0 && bud < 100000000) clean.monthlyBudget = bud;
+      }
+      if (Array.isArray(rawArgs.categories)) {
+        clean.categories = rawArgs.categories
+          .filter(c => c && typeof c.category === 'string')
+          .map(c => ({
+            category: c.category.trim(),
+            amount: parseIndianNumber(c.amount) || 0
+          }));
       }
     } else if (toolName === 'deleteIncome' || toolName === 'deleteExpense' || toolName === 'deleteBudget') {
       if (rawArgs.id && typeof rawArgs.id === 'string' && /^[0-9a-fA-F]{24}$/.test(rawArgs.id)) clean.id = rawArgs.id;
@@ -363,8 +412,9 @@ class GroqProvider extends BaseProvider {
         } catch (callErr) {
           const errBody = callErr.error || (callErr.response && callErr.response.data) || {};
           const failedGen = errBody.failed_generation || callErr.message || '';
-          if (failedGen && (errBody.code === 'tool_use_failed' || failedGen.includes('<function='))) {
-            const funcMatch = failedGen.match(/<function=([a-zA-Z0-9_-]+)(?:[\(\=\s]*(\{.*?\})?\s*\)?)?\s*>?\s*<\/function>/s);
+          if (failedGen && (errBody.code === 'tool_use_failed' || failedGen.includes('<function=') || failedGen.includes('\"name\"'))) {
+            let funcMatch = failedGen.match(/<function=([a-zA-Z0-9_-]+)[^\{]*(\{[\s\S]*?\})\s*(?:<\/?function>|>|$)/s) ||
+                            failedGen.match(/<function=([a-zA-Z0-9_-]+)[^\{]*(\{[\s\S]*?\})/s);
             if (funcMatch) {
               const name = funcMatch[1];
               let args = {};
@@ -382,14 +432,28 @@ class GroqProvider extends BaseProvider {
                 }
               };
             } else {
-              const cleanText = failedGen.replace(/<function=.*?<\/function>/gs, '').trim();
-              if (cleanText.length > 0) {
-                return {
-                  message: cleanText,
-                  type: 'text',
-                  toolCalls: executedToolCalls,
-                  confirmation: null
-                };
+              try {
+                const parsedGen = typeof failedGen === 'string' ? JSON.parse(failedGen) : failedGen;
+                if (parsedGen && parsedGen.name) {
+                  extractedTool = {
+                    id: `call_${Date.now()}`,
+                    type: 'function',
+                    function: {
+                      name: parsedGen.name,
+                      arguments: typeof parsedGen.arguments === 'string' ? parsedGen.arguments : JSON.stringify(parsedGen.arguments || {})
+                    }
+                  };
+                }
+              } catch (e) {
+                const cleanText = failedGen.replace(/<function=[^>]*>[\s\S]*?<\/?function>/gs, '').replace(/<function=[^>]*>[\s\S]*?<function>/gs, '').trim();
+                if (cleanText.length > 0) {
+                  return {
+                    message: cleanText,
+                    type: 'text',
+                    toolCalls: executedToolCalls,
+                    confirmation: null
+                  };
+                }
               }
             }
           }
@@ -444,10 +508,71 @@ class GroqProvider extends BaseProvider {
           // WRITE TOOLS: Return confirmation proposal immediately
           if (classification === 'write') {
             const { createPendingAction } = require('../pendingActions');
+
+            // Enrich budget creation/update with authoritative normalization and duplicate check
+            if (funcName === 'createBudget' || funcName === 'updateBudget') {
+              const {
+                parseIndianNumber,
+                normalizeBudgetCategories
+              } = require('../utils/budgetCalculator');
+              const Budget = require('../../../models/Budget');
+              const Expense = require('../../../models/Expense');
+              const mongoose = require('mongoose');
+
+              const now = new Date();
+              const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+              const targetMonth = sanitizedArgs.month || currentMonth;
+              sanitizedArgs.month = targetMonth;
+
+              // Check existing budget in database
+              const existingBudget = await Budget.findOne({
+                user: new mongoose.Types.ObjectId(userId),
+                month: targetMonth
+              });
+
+              if (existingBudget) {
+                sanitizedArgs.isExistingBudget = true;
+                sanitizedArgs.existingBudgetAmount = existingBudget.monthlyBudget;
+              } else {
+                sanitizedArgs.isExistingBudget = false;
+                sanitizedArgs.existingBudgetAmount = 0;
+              }
+
+              // Fetch user's historical category spending
+              const historicalExpenses = await Expense.find({
+                user: new mongoose.Types.ObjectId(userId)
+              }).sort({ date: -1 }).limit(100);
+
+              const historicalMap = {};
+              historicalExpenses.forEach(exp => {
+                historicalMap[exp.category] = (historicalMap[exp.category] || 0) + exp.amount;
+              });
+
+              // Ensure category allocations match requested total exactly
+              const totalAmount = parseIndianNumber(sanitizedArgs.monthlyBudget) || 0;
+              sanitizedArgs.monthlyBudget = totalAmount;
+              sanitizedArgs.categories = normalizeBudgetCategories(
+                totalAmount,
+                sanitizedArgs.categories,
+                historicalMap
+              );
+              sanitizedArgs.total = totalAmount;
+            }
+
             const pending = createPendingAction(userId, funcName, sanitizedArgs);
 
+            let proposalMsg = `I prepared a request to execute "${funcName}". Please approve or cancel below.`;
+            if (funcName === 'createBudget' || funcName === 'updateBudget') {
+              const formattedAmt = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(sanitizedArgs.monthlyBudget || 0);
+              if (sanitizedArgs.isExistingBudget) {
+                proposalMsg = `Found an existing monthly budget of ₹${sanitizedArgs.existingBudgetAmount}. Would you like to update it to ${formattedAmt} for ${sanitizedArgs.month}? Please review the category breakdown and approve or cancel below.`;
+              } else {
+                proposalMsg = `I have prepared a monthly budget proposal of ${formattedAmt} for ${sanitizedArgs.month}. Please review the category breakdown and approve or cancel below.`;
+              }
+            }
+
             return {
-              message: `I prepared a request to execute "${funcName}". Please approve or cancel below.`,
+              message: proposalMsg,
               type: 'confirmation',
               toolCalls: executedToolCalls,
               confirmation: {

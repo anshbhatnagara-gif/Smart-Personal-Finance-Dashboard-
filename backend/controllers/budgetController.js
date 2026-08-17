@@ -41,10 +41,17 @@ const setBudget = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Monthly budget limit cannot be negative or invalid' });
     }
 
+    const updateDoc = { monthlyBudget: numericLimit };
+    if (Array.isArray(req.body.categories)) {
+      const { normalizeBudgetCategories } = require('../services/ai/utils/budgetCalculator');
+      const normalized = normalizeBudgetCategories(numericLimit, req.body.categories);
+      updateDoc.categories = normalized.map(c => ({ category: c.category, allocatedAmount: c.amount }));
+    }
+
     // Upsert budget for current authenticated user and month
     const budget = await Budget.findOneAndUpdate(
       { user: req.user.id, month },
-      { monthlyBudget: numericLimit },
+      updateDoc,
       { new: true, upsert: true, runValidators: true }
     );
 

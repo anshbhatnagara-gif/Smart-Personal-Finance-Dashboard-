@@ -52,7 +52,7 @@ const toolDefinitions = [
       type: 'object',
       properties: {
         month: { type: 'string', description: 'Target month in YYYY-MM format' },
-        savingsTarget: { type: 'number', description: 'Target savings amount in INR' }
+        savingsTarget: { type: ['number', 'null'], description: 'Optional target savings amount in INR' }
       }
     }
   },
@@ -181,30 +181,54 @@ const toolDefinitions = [
   },
   {
     name: 'createBudget',
-    description: 'Configures a monthly budget limit. Requires user approval.',
+    description: 'Configures a monthly budget limit with optional category allocations. Requires user approval.',
     classification: 'write',
     requiresConfirmation: true,
     parameters: {
       type: 'object',
       properties: {
-        monthlyBudget: { type: 'number', description: 'Monthly budget limit amount' },
-        month: { type: 'string', description: 'Month in YYYY-MM format' }
+        monthlyBudget: { type: 'number', description: 'Monthly budget limit amount in INR' },
+        month: { type: 'string', description: 'Month in YYYY-MM format' },
+        categories: {
+          type: 'array',
+          description: 'Category allocations that sum to the total budget',
+          items: {
+            type: 'object',
+            properties: {
+              category: { type: 'string' },
+              amount: { type: 'number' }
+            },
+            required: ['category', 'amount']
+          }
+        }
       },
-      required: ['monthlyBudget', 'month']
+      required: ['monthlyBudget']
     }
   },
   {
     name: 'updateBudget',
-    description: 'Updates an existing monthly budget limit. Requires user approval.',
+    description: 'Updates an existing monthly budget limit with category allocations. Requires user approval.',
     classification: 'write',
     requiresConfirmation: true,
     parameters: {
       type: 'object',
       properties: {
-        monthlyBudget: { type: 'number', description: 'New monthly budget limit' },
-        month: { type: 'string', description: 'Month in YYYY-MM format' }
+        monthlyBudget: { type: 'number', description: 'New monthly budget limit in INR' },
+        month: { type: 'string', description: 'Month in YYYY-MM format' },
+        categories: {
+          type: 'array',
+          description: 'Category allocations that sum to the total budget',
+          items: {
+            type: 'object',
+            properties: {
+              category: { type: 'string' },
+              amount: { type: 'number' }
+            },
+            required: ['category', 'amount']
+          }
+        }
       },
-      required: ['monthlyBudget', 'month']
+      required: ['monthlyBudget']
     }
   },
   {
