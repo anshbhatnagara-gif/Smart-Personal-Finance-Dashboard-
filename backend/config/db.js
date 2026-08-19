@@ -11,8 +11,17 @@ try {
 const connectDB = async () => {
   try {
     const mongoUri = process.env.MONGODB_URI || process.env.MONGO_URI;
-    const conn = await mongoose.connect(mongoUri);
-    console.log(`MongoDB Connected (Atlas/Cloud): ${conn.connection.host}`);
+    if (!mongoUri) {
+      throw new Error('MONGODB_URI or MONGO_URI environment variable is missing.');
+    }
+    // Safely print host target without exposing credentials
+    const sanitizedUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@');
+    console.log(`Connecting to MongoDB at: ${sanitizedUri}`);
+
+    const conn = await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+    });
+    console.log(`MongoDB Connected successfully: ${conn.connection.host}`);
   } catch (error) {
     console.error(`Error connecting to MongoDB: ${error.message}`);
     process.exit(1);
