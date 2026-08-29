@@ -14,17 +14,20 @@ An intelligent, full-stack personal finance application built with a **Vanilla H
 
 ---
 
-## 🌐 Live Production Deployment
+## 🌐 Live Production Deployment & Application Links
 
-| Service | Platform | Live URL / Endpoint | Status |
+| Service / Page | Platform | Live URL / Endpoint | Status |
 | :--- | :--- | :--- | :--- |
-| **Backend API** | [Render](https://render.com) | [smart-personal-finance-dashboard-zed3.onrender.com](https://smart-personal-finance-dashboard-zed3.onrender.com) | 🟢 **Live (200 OK)** |
-| **Interactive API Docs** | [Swagger / OpenAPI](https://fastapi.tiangolo.com) | [smart-personal-finance-dashboard-zed3.onrender.com/docs](https://smart-personal-finance-dashboard-zed3.onrender.com/docs) | 🟢 **Online** |
-| **Health Probe** | [FastAPI Health](https://smart-personal-finance-dashboard-zed3.onrender.com/health/ready) | `GET /health/ready` | 🟢 **Healthy (DB Connected)** |
-| **Frontend Application** | [Vercel](https://vercel.com) | Deployed via GitHub `frontend/` with zero-config API proxy | 🟢 **Ready** |
-| **Production Database** | [TiDB Cloud](https://tidbcloud.com) | Serverless MySQL 8.0 Cluster (`smart_finance_db`) via PyMySQL + SSL | 🟢 **Connected** |
+| 🔑 **Login Page** | [Vercel](https://vercel.com) | [`/login.html`](https://smart-personal-finance-dashboard-on.vercel.app/login.html) | 🟢 **Live** |
+| 📝 **Register Page** | [Vercel](https://vercel.com) | [`/register.html`](https://smart-personal-finance-dashboard-on.vercel.app/register.html) | 🟢 **Live** |
+| 📊 **Main Dashboard** | [Vercel](https://vercel.com) | [`/index.html`](https://smart-personal-finance-dashboard-on.vercel.app) | 🟢 **Live** |
+| ⚡ **Backend API** | [Render](https://render.com) | [smart-personal-finance-dashboard-zed3.onrender.com](https://smart-personal-finance-dashboard-zed3.onrender.com) | 🟢 **Live (200 OK)** |
+| 📖 **Interactive API Docs** | [Swagger / OpenAPI](https://fastapi.tiangolo.com) | [smart-personal-finance-dashboard-zed3.onrender.com/docs](https://smart-personal-finance-dashboard-zed3.onrender.com/docs) | 🟢 **Online** |
+| 🩺 **Health Probe** | [FastAPI Health](https://smart-personal-finance-dashboard-zed3.onrender.com/health/ready) | `GET /health/ready` | 🟢 **Healthy (DB Connected)** |
+| 🗄️ **Production Database** | [TiDB Cloud](https://tidbcloud.com) | Serverless MySQL 8.0 Cluster (`smart_finance_db`) via PyMySQL + SSL | 🟢 **Connected** |
 
 ---
+
 
 ## 📑 Table of Contents
 
