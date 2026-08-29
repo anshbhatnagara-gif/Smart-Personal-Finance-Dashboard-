@@ -29,10 +29,10 @@ async function initApp() {
   setupLogoutButtons();
 
   // 5. Initialize Sub-modules
-  initTransactions();
-  initBudgets();
-  initCharts();
-  initAiAssistant();
+  if (typeof initTransactions === "function") initTransactions();
+  if (typeof initBudgets === "function") initBudgets();
+  if (typeof initCharts === "function") initCharts();
+  if (typeof initAiAssistant === "function") initAiAssistant();
 
   // 6. Subscribe to global State Events
   StateEvents.subscribe(() => {
