@@ -29,9 +29,10 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false  # Configure your Vercel frontend URL (e.g. https://smart-personal-finance.vercel.app)
       - key: AI_PROVIDER
-        value: gemini
+        value: groq
       - key: AI_API_KEY
-        sync: false  # Configure your Google Gemini API Key in Render Dashboard
+        sync: false  # Configure your Groq API Key in Render Dashboard
       - key: AI_MODEL
-        value: gemini-2.5-flash
+        value: openai/gpt-oss-120b
+
 

@@ -45,12 +45,13 @@ class Settings(BaseSettings):
     )
 
     # AI Financial Assistant Configuration
-    AI_PROVIDER: str = "mock"  # 'gemini' | 'mock'
+    AI_PROVIDER: str = "groq"  # 'groq' | 'gemini' | 'mock'
     AI_API_KEY: Optional[str] = None
-    AI_MODEL: str = "gemini-2.5-flash"
+    AI_MODEL: str = "openai/gpt-oss-120b"
     MAX_HISTORY_MESSAGES: int = 10
     MAX_MESSAGE_LENGTH: int = 1000
     AI_TIMEOUT_SECONDS: int = 30
+
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
