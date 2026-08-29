@@ -1,0 +1,36 @@
+# ==============================================================================
+# Render Deployment Configuration for Smart Personal Finance Dashboard Backend
+# ==============================================================================
+services:
+  - type: web
+    name: smart-personal-finance-api
+    runtime: python
+    region: oregon
+    plan: starter
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health/ready
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.8
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: DATABASE_URL
+        sync: false  # Configure TiDB Cloud connection string in Render Dashboard (e.g. mysql+pymysql://<user>:<password>@gateway01.<region>.prod.aws.tidbcloud.com:4000/<dbname>?ssl_verify_cert=true&ssl_verify_identity=true)
+      - key: SECRET_KEY
+        generateValue: true  # Cryptographically secure 32+ char key
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "1440"
+      - key: ALLOWED_ORIGINS
+        sync: false  # Configure your Vercel frontend URL (e.g. https://smart-personal-finance.vercel.app)
+      - key: AI_PROVIDER
+        value: mock  # Set to 'gemini' and provide AI_API_KEY when live Google Gemini is desired
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_MODEL
+        sync: false

@@ -101,5 +101,6 @@ def run():
     return results
 
 if __name__ == "__main__":
+    
     res = run()
     sys.exit(0 if res["failed"] == 0 else 1)

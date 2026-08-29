@@ -166,7 +166,7 @@ class SmartActionEngine:
         return (
             self.db.query(ActionAudit)
             .filter(ActionAudit.user_id == self.user_id)
-            .order_by(ActionAudit.timestamp.desc())
+            .order_by(ActionAudit.timestamp.desc(), ActionAudit.id.desc())
             .all()
         )
 
