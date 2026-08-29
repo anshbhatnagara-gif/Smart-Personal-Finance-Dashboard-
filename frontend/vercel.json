@@ -1,8 +1,8 @@
 {
   "version": 2,
   "name": "smart-personal-finance-dashboard",
-  "public": true,
   "cleanUrls": true,
+
   "rewrites": [
     {
       "source": "/api/:path*",
