@@ -34,11 +34,34 @@ def test_schema_compilation():
     print("TESTING TIDB CLOUD / MYSQL SCHEMA COMPILATION & DIALECT COMPATIBILITY")
     print("=" * 80)
 
-    # 1. Verify PyMySQL driver
-    print("\n1. Driver Verification:")
+    # 1. Verify PyMySQL driver & URL Normalization
+    print("\n1. Driver & URL Normalization Verification:")
     print(f"  [PASS] PyMySQL installed: v{pymysql.__version__}")
 
-    # 2. Verify all models registered on Base.metadata
+    from app.core.database import normalize_database_url
+    from sqlalchemy import create_engine
+
+    # Test mysql:// auto-normalization
+    test_raw_mysql = "mysql://user:pass@gateway.tidbcloud.com:4000/test"
+    normalized_mysql = normalize_database_url(test_raw_mysql)
+    assert normalized_mysql == "mysql+pymysql://user:pass@gateway.tidbcloud.com:4000/test", f"Unexpected normalized URL: {normalized_mysql}"
+    print(f"  [PASS] normalize_database_url('mysql://...') -> '{normalized_mysql}'")
+
+    # Test create_engine with normalized URL uses pymysql driver
+    test_engine = create_engine(normalized_mysql)
+    assert test_engine.url.drivername == "mysql+pymysql", f"Expected mysql+pymysql, got {test_engine.url.drivername}"
+    assert test_engine.dialect.driver == "pymysql", f"Expected dialect driver pymysql, got {test_engine.dialect.driver}"
+    print(f"  [PASS] Engine drivername is '{test_engine.url.drivername}' (Dialect driver: '{test_engine.dialect.driver}')")
+
+    # Test sqlite:/// preservation
+    test_sqlite = "sqlite:///./finance.db"
+    normalized_sqlite = normalize_database_url(test_sqlite)
+    assert normalized_sqlite == test_sqlite
+    sqlite_eng = create_engine(normalized_sqlite)
+    assert sqlite_eng.url.drivername == "sqlite"
+    print(f"  [PASS] SQLite drivername is '{sqlite_eng.url.drivername}'")
+
+    # 2. Verify all models registered on Base.metadata:
     print("\n2. Model Registration on Base.metadata:")
     metadata_tables = list(Base.metadata.tables.keys())
     for t_name in EXPECTED_TABLES:
