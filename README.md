@@ -1,5 +1,8 @@
 # 🚀 Smart Personal Finance Dashboard
 
+[![Render](https://img.shields.io/badge/Render-Deployed%20Live-46E3B7?style=flat&logo=render&logoColor=white)](https://smart-personal-finance-dashboard-zed3.onrender.com/docs)
+[![Vercel](https://img.shields.io/badge/Vercel-Frontend%20Live-000000?style=flat&logo=vercel&logoColor=white)](https://vercel.com)
+[![TiDB Cloud](https://img.shields.io/badge/TiDB%20Cloud-Serverless%20MySQL-3870FF?style=flat&logo=mysql&logoColor=white)](https://tidbcloud.com)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0+-D71F00.svg?style=flat&logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
@@ -11,9 +14,23 @@ An intelligent, full-stack personal finance application built with a **Vanilla H
 
 ---
 
+## 🌐 Live Production Deployment
+
+| Service | Platform | Live URL / Endpoint | Status |
+| :--- | :--- | :--- | :--- |
+| **Backend API** | [Render](https://render.com) | [smart-personal-finance-dashboard-zed3.onrender.com](https://smart-personal-finance-dashboard-zed3.onrender.com) | 🟢 **Live (200 OK)** |
+| **Interactive API Docs** | [Swagger / OpenAPI](https://fastapi.tiangolo.com) | [smart-personal-finance-dashboard-zed3.onrender.com/docs](https://smart-personal-finance-dashboard-zed3.onrender.com/docs) | 🟢 **Online** |
+| **Health Probe** | [FastAPI Health](https://smart-personal-finance-dashboard-zed3.onrender.com/health/ready) | `GET /health/ready` | 🟢 **Healthy (DB Connected)** |
+| **Frontend Application** | [Vercel](https://vercel.com) | Deployed via GitHub `frontend/` with zero-config API proxy | 🟢 **Ready** |
+| **Production Database** | [TiDB Cloud](https://tidbcloud.com) | Serverless MySQL 8.0 Cluster (`smart_finance_db`) via PyMySQL + SSL | 🟢 **Connected** |
+
+---
+
 ## 📑 Table of Contents
 
+- [Live Production Deployment](#-live-production-deployment)
 - [Key Architecture & Capabilities](#-key-architecture--capabilities)
+
   - [1. 7-Dimension Financial Health Score Engine](#1-7-dimension-financial-health-score-engine)
   - [2. AI Explainability Engine](#2-ai-explainability-engine)
   - [3. What-If Financial Decision Simulator](#3-what-if-financial-decision-simulator)
@@ -286,19 +303,56 @@ smart-personal-finance/
    ```
    The backend API will be available at `http://127.0.0.1:8000`. Interactive OpenAPI documentation is accessible at `http://127.0.0.1:8000/docs`.
 
-### Frontend Setup
+---
 
-Simply open `frontend/index.html` in your browser, or serve it using any lightweight static server:
-```bash
-# Using Python's built-in HTTP server:
-cd frontend
-python -m http.server 3000
+## ☁️ Production Cloud Deployment Guide
+
+### 1. Backend Deployment (Render)
+- **Runtime**: Python 3.11+
+- **Root Directory**: `backend`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Health Check Path**: `/health/ready`
+- **Production URL**: `https://smart-personal-finance-dashboard-zed3.onrender.com`
+
+**Required Render Environment Variables**:
+```env
+ENVIRONMENT=production
+DEBUG=false
+DATABASE_URL=mysql+pymysql://<user>:<password>@gateway01.<region>.prod.aws.tidbcloud.com:4000/smart_finance_db?ssl_verify_cert=true&ssl_verify_identity=true
+SECRET_KEY=<32-char-random-key>
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://smart-personal-finance-dashboard.vercel.app
+AI_PROVIDER=gemini
+AI_API_KEY=<your-gemini-api-key>
+AI_MODEL=gemini-2.5-flash
 ```
-Open `http://localhost:3000` in your web browser.
+
+### 2. Database (TiDB Cloud Serverless)
+- MySQL 8.0 wire-compatible distributed database with automatic scaling.
+- Uses `mysql+pymysql` driver with SSL encryption (`ssl_verify_cert=true&ssl_verify_identity=true`).
+- Connection pooling configured: `pool_size=10`, `max_overflow=20`, `pool_recycle=300`, `pool_pre_ping=True`.
+
+### 3. Frontend Deployment (Vercel)
+- **Framework Preset**: `Other`
+- **Root Directory**: `frontend`
+- Zero-config automatic proxy configured in `vercel.json`:
+  ```json
+  {
+    "version": 2,
+    "cleanUrls": true,
+    "rewrites": [
+      {
+        "source": "/api/:path*",
+        "destination": "https://smart-personal-finance-dashboard-zed3.onrender.com/api/:path*"
+      }
+    ]
+  }
+  ```
 
 ---
 
 ## 🧪 Test Suite & Verification
+
 
 The project includes an automated regression test suite covering all architecture phases:
 
