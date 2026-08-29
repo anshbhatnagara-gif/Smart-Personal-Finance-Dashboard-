@@ -710,7 +710,15 @@ async function refreshAiStatus() {
     if (indicator) {
       indicator.className = "status-indicator emerald";
     }
-    statusText.textContent = `${provider === "gemini" ? "Gemini 2.5 Flash" : "FastAPI Engine"} • Ready`;
+    if (provider === "groq") {
+      statusText.textContent = "Groq AI Engine • Ultra Fast";
+    } else if (provider === "gemini") {
+      statusText.textContent = "Gemini 2.5 Flash • Ready";
+    } else {
+      statusText.textContent = "FastAPI Engine • Ready";
+    }
+
+
   } catch (e) {
     if (indicator) indicator.className = "status-indicator amber";
     statusText.textContent = "Offline Fallback • Active";
