@@ -1,0 +1,36 @@
+# Python Bytecode & Cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+backend/.venv/
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+backend/.env
+
+# SQLite Databases & Local Storage
+*.db
+*.sqlite
+*.sqlite3
+finance.db
+backend/finance.db
+
+# Logs & System Artifacts
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+scratch/*.log

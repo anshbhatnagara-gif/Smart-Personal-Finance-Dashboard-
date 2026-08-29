@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Personal Finance Dashboard — Financial Intelligence</title>
+  <meta name="description" content="Intelligent, dark-first personal finance dashboard with real-time health scoring, smart insights, and AI financial assistant.">
+
+  <!-- Core & Custom Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/responsive.css">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- Backdrop for Mobile Sidebar Drawer -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <!-- App Shell Container -->
+  <div class="app-container">
+
+    <!-- ==================== SIDEBAR ==================== -->
+    <aside class="sidebar" id="app-sidebar">
+      <div class="sidebar-header">
+        <div class="brand-logo">
+          <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">SmartFinance</span>
+          <span class="brand-badge">Intelligence AI</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-label">Main Menu</div>
+        <a href="#dashboard" class="nav-item active" data-view="dashboard" id="nav-dashboard">
+          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
+          <span>Dashboard</span>
+        </a>
+        <a href="#transactions" class="nav-item" data-view="transactions" id="nav-transactions">
+          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+          <span>Transactions</span>
+        </a>
+        <a href="#budgets" class="nav-item" data-view="budgets" id="nav-budgets">
+          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>Budgets</span>
+        </a>
+        <a href="#insights" class="nav-item" data-view="insights" id="nav-insights">
+          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+          <span>Smart Insights</span>
+        </a>
+        <a href="#analytics" class="nav-item" data-view="analytics" id="nav-analytics">
+          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+          <span>Analytics</span>
+        </a>
+
+        <div class="nav-label">Settings</div>
+        <a href="#profile" class="nav-item" data-view="profile" id="nav-profile">
+          <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+          <span>User Profile</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-bar">
+          <div class="user-avatar user-avatar-initials">A</div>
+          <div class="user-info">
+            <div class="user-name user-profile-name">Ansh</div>
+            <div class="user-email user-profile-email">ansh@fintech.dev</div>
+          </div>
+          <button class="btn btn-ghost btn-icon-sm theme-toggle-btn" title="Toggle Theme">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+          </button>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="handleLogout()" style="width: 100%;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ==================== MAIN WRAPPER ==================== -->
+    <main class="main-wrapper">
+
+      <!-- Top Header Navigation Bar -->
+      <header class="top-header">
+        <div class="header-left">
+          <button class="mobile-menu-btn" id="mobile-menu-toggle-btn" aria-label="Toggle navigation menu">
+            <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+          </button>
+          <div class="greeting-container">
+            <h1 class="greeting-title" id="header-greeting-title">Good Morning, Ansh 👋</h1>
+            <p class="greeting-subtitle">Here's your intelligent financial overview.</p>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <div class="header-date-badge">
+            <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <span id="header-current-date">Fri, 28 Aug 2026</span>
+          </div>
+
+          <button class="btn btn-emerald btn-sm" onclick="openAddTxModal()" id="header-add-tx-btn">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+            <span class="btn-header-text">Add Transaction</span>
+          </button>
+
+          <button class="btn btn-primary btn-sm" id="header-ai-trigger-btn">
+            <span>🤖</span>
+            <span class="btn-header-text">Ask AI</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ==================== MAIN VIEWS ==================== -->
+      <div class="view-container">
+
+        <!-- VIEW 1: DASHBOARD (MAIN) -->
+        <section class="view-section active" id="view-dashboard">
+
+          <!-- 1. Four Financial Summary Cards -->
+          <div class="summary-cards-grid">
+            <!-- Total Income -->
+            <div class="card stat-card income">
+              <div class="stat-card-top">
+                <span class="stat-label">Total Income (Aug)</span>
+                <div class="stat-icon-wrapper stat-icon-income">↓</div>
+              </div>
+              <div class="stat-value" id="stat-income-val">₹0</div>
+              <div class="stat-trend" id="stat-income-trend">
+                <span class="trend-neutral">--</span>
+                <span>vs last month</span>
+              </div>
+            </div>
+
+            <!-- Total Expenses -->
+            <div class="card stat-card expense">
+              <div class="stat-card-top">
+                <span class="stat-label">Total Expenses (Aug)</span>
+                <div class="stat-icon-wrapper stat-icon-expense">↑</div>
+              </div>
+              <div class="stat-value" id="stat-expense-val">₹0</div>
+              <div class="stat-trend" id="stat-expense-trend">
+                <span class="trend-neutral">--</span>
+                <span>vs last month</span>
+              </div>
+            </div>
+
+            <!-- Net Savings -->
+            <div class="card stat-card savings">
+              <div class="stat-card-top">
+                <span class="stat-label">Net Savings</span>
+                <div class="stat-icon-wrapper stat-icon-savings">💰</div>
+              </div>
+              <div class="stat-value" id="stat-savings-val">₹0</div>
+              <div class="stat-trend" id="stat-savings-trend">
+                <span class="trend-neutral">--</span>
+                <span>vs last month</span>
+              </div>
+            </div>
+
+            <!-- Savings Rate -->
+            <div class="card stat-card rate">
+              <div class="stat-card-top">
+                <span class="stat-label">Savings Rate</span>
+                <div class="stat-icon-wrapper stat-icon-rate">📊</div>
+              </div>
+              <div class="stat-value" id="stat-rate-val">0%</div>
+              <div class="stat-trend" id="stat-rate-trend">
+                <span class="badge badge-emerald">Optimal</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Health Score Ring & Smart Insights Grid -->
+          <div class="health-and-insights-grid" style="margin-top: 1.5rem;">
+            
+            <!-- Financial Health Score Card -->
+            <div class="card health-score-card">
+              <div class="card-header" style="width: 100%; margin-bottom: 0;">
+                <div>
+                  <div class="card-title">Financial Health</div>
+                  <div class="card-subtitle">Algorithmic resilience score</div>
+                </div>
+                <span class="status-indicator emerald pulse"></span>
+              </div>
+
+              <!-- Animated SVG Conic Ring -->
+              <div class="score-gauge-wrapper">
+                <svg class="score-svg-ring" viewBox="0 0 160 160">
+                  <circle class="score-circle-bg" cx="80" cy="80" r="70"></circle>
+                  <circle class="score-circle-progress" id="health-score-progress-ring" cx="80" cy="80" r="70"></circle>
+                </svg>
+                <div class="score-display">
+                  <span class="score-number" id="health-score-number">82</span>
+                  <span class="score-max">/ 100</span>
+                </div>
+              </div>
+
+              <span class="badge badge-emerald score-status-badge" id="health-score-status-badge">Good Health</span>
+
+              <!-- Weighted Factor Breakdown -->
+              <div class="health-factors-list" id="health-factors-container">
+                <!-- Dynamically injected via JavaScript -->
+              </div>
+
+              <button class="btn btn-ghost btn-xs" onclick="openHealthExplanationModal()" id="btn-why-health-score" style="margin-top: 0.75rem; width: 100%; border: 1px solid var(--border-color); font-size: 0.75rem; padding: 0.35rem 0.5rem; color: var(--indigo); font-weight: 600;">
+                💡 Why this score?
+              </button>
+            </div>
+
+            <!-- Smart Insights Container Card -->
+            <div class="card insights-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Smart Financial Insights</div>
+                  <div class="card-subtitle">Real-time dynamic observations & saving optimizations</div>
+                </div>
+                <span class="badge badge-indigo">AI Powered</span>
+              </div>
+
+              <div class="insights-list" id="smart-insights-list">
+                <!-- Dynamic Insight items injected here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Proactive AI Financial Insights Card Section -->
+          <div class="card proactive-insights-card" style="margin-top: 1.5rem;">
+            <div class="card-header">
+              <div>
+                <div class="card-title">AI Financial Insights & Proactive Alerts</div>
+                <div class="card-subtitle">Verified real-time event detection & actionable observations</div>
+              </div>
+              <span class="badge badge-amber">Proactive Engine</span>
+            </div>
+            <div class="proactive-insights-grid" id="proactive-insights-container">
+              <!-- Dynamically rendered via JavaScript -->
+            </div>
+          </div>
+
+          <!-- Phase 3.6 Financial Goals & Planning Section -->
+          <div class="card financial-goals-card" style="margin-top: 1.5rem;">
+            <div class="card-header">
+              <div>
+                <div class="card-title">Financial Goals & AI Planning</div>
+                <div class="card-subtitle">Track targets, deadlines, required savings pace & feasibility</div>
+              </div>
+              <button class="btn btn-emerald btn-sm" onclick="openAddGoalModal()" id="btn-add-goal">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
+                <span>Add Goal</span>
+              </button>
+            </div>
+            <div class="goals-grid" id="financial-goals-container">
+              <!-- Dynamically rendered via JavaScript -->
+            </div>
+          </div>
+
+          <!-- Phase 3.7 AI Financial Forecast Section -->
+          <div class="card forecast-card-section" style="margin-top: 1.5rem;">
+            <div class="card-header">
+              <div>
+                <div class="card-title">AI Financial Forecast (Next Month)</div>
+                <div class="card-subtitle">Deterministic predictive projections & 6-month cashflow outlook</div>
+              </div>
+              <div class="forecast-header-badges">
+                <span class="badge badge-indigo" id="forecast-confidence-badge">MEDIUM CONFIDENCE</span>
+                <span class="badge badge-amber" id="forecast-risk-badge">STRESS: LOW</span>
+              </div>
+            </div>
+            <div class="forecast-metrics-grid" id="forecast-metrics-container">
+              <!-- Dynamically rendered via JavaScript: Income, Expenses, Savings, Savings Rate, Cashflow Outlook, Risk Level -->
+            </div>
+          </div>
+
+          <!-- Phase 3.7 AI Predictions & Risk Intelligence -->
+          <div class="card predictions-card-section" style="margin-top: 1.5rem;">
+            <div class="card-header">
+              <div>
+                <div class="card-title">AI Predictions & Risk Intelligence</div>
+                <div class="card-subtitle">Grounded synthesis of future risks, budget burn & recommendations</div>
+              </div>
+              <span class="badge badge-cyan">Predictive Intelligence</span>
+            </div>
+            <div class="predictions-grid" id="predictions-container">
+              <!-- Dynamically rendered via JavaScript: Fact, Forecast, Risk, Suggestion cards -->
+            </div>
+          </div>
+
+          <!-- Phase 3.8 AI Smart Financial Actions & Automation -->
+          <div class="card smart-actions-section" style="margin-top: 1.5rem;">
+            <div class="card-header">
+              <div>
+                <div class="card-title">AI Smart Financial Actions & Automation</div>
+                <div class="card-subtitle">User-confirmed optimization actions, budget realignments & savings automations</div>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button class="btn btn-secondary btn-sm" onclick="loadActionHistoryUI()" id="btn-action-history">
+                  <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  <span>Audit Trail</span>
+                </button>
+                <button class="btn btn-primary btn-sm" onclick="loadSmartActionsUI(true)" id="btn-refresh-actions">
+                  <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                  <span>Re-Evaluate</span>
+                </button>
+              </div>
+            </div>
+            <div class="smart-actions-grid" id="smart-actions-container">
+              <!-- Dynamically rendered via JavaScript -->
+            </div>
+          </div>
+
+          <!-- Phase 3.9 AI What-If Financial Decision Simulator Section -->
+          <div class="card simulation-card-section" style="margin-top: 1.5rem;">
+            <div class="card-header">
+              <div>
+                <div class="card-title">What-If Financial Decision Simulator</div>
+                <div class="card-subtitle">Hypothetical scenario projections with zero database modifications</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="openSimulationModal()" id="btn-open-simulator">
+                <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                <span>Launch Simulator</span>
+              </button>
+            </div>
+            <div class="simulation-quick-presets" id="simulation-presets-container" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;">
+              <!-- Dynamic preset buttons -->
+            </div>
+            <div class="simulation-results-container" id="simulation-results-container">
+              <!-- Rendered simulation comparison cards -->
+            </div>
+          </div>
+
+          <!-- 3. Interactive Chart Visualizations (2x2 Grid) -->
+          <div class="charts-grid" style="margin-top: 1.5rem;">
+            <!-- Chart 1: Income vs Expenses -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Income vs Expenses</div>
+                  <div class="card-subtitle">6-Month cash flow comparison</div>
+                </div>
+                <span class="badge badge-indigo">Monthly Trend</span>
+              </div>
+              <div class="chart-canvas-container">
+                <canvas id="incomeExpenseChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 2: Savings Trend -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Monthly Net Savings Trend</div>
+                  <div class="card-subtitle">Cumulative capital retention rate</div>
+                </div>
+                <span class="badge badge-emerald">Growth</span>
+              </div>
+              <div class="chart-canvas-container">
+                <canvas id="savingsTrendChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 3: Expense Category Breakdown -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Expense Category Breakdown</div>
+                  <div class="card-subtitle">Current month allocation by category</div>
+                </div>
+                <span class="badge badge-cyan">Aug 2026</span>
+              </div>
+              <div class="chart-canvas-container">
+                <canvas id="categoryDoughnutChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 4: Budget Utilization -->
+            <div class="card chart-card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Category Budget Utilization</div>
+                  <div class="card-subtitle">Spent vs limit envelope tracking</div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('nav-budgets').click()">Manage Budgets</button>
+              </div>
+              <div class="chart-canvas-container">
+                <canvas id="budgetUtilizationChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 2: TRANSACTIONS MANAGEMENT -->
+        <section class="view-section" id="view-transactions">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Transaction History</h2>
+                <p class="card-subtitle">Search, filter, categorize, and manage all your cash inflows and outflows</p>
+              </div>
+              <button class="btn btn-emerald btn-sm" onclick="openAddTxModal()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <span>Add Transaction</span>
+              </button>
+            </div>
+
+            <!-- Transactions Filter Bar -->
+            <div class="transactions-filter-bar">
+              <div class="filter-group-left">
+                <!-- Search -->
+                <div class="search-input-wrapper">
+                  <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                  <input type="text" id="tx-search-input" class="form-control" placeholder="Search description, category...">
+                </div>
+
+                <!-- Category Filter -->
+                <select id="tx-category-filter" class="form-control form-select" style="min-width: 150px; width: auto;">
+                  <option value="ALL">All Categories</option>
+                  <option value="Salary">💼 Salary</option>
+                  <option value="Freelance">💻 Freelance</option>
+                  <option value="Investment">📈 Investment</option>
+                  <option value="Food">🍔 Food</option>
+                  <option value="Rent">🏠 Rent</option>
+                  <option value="Travel">🚗 Travel</option>
+                  <option value="Shopping">🛍️ Shopping</option>
+                  <option value="Entertainment">🎬 Entertainment</option>
+                  <option value="Utilities">⚡ Utilities</option>
+                  <option value="Healthcare">💊 Healthcare</option>
+                  <option value="Education">📚 Education</option>
+                  <option value="Other">📦 Other</option>
+                </select>
+
+                <!-- Type Tabs Filter -->
+                <div class="type-filter-tabs">
+                  <button class="type-tab-btn tx-type-tab active" data-type="ALL">All</button>
+                  <button class="type-tab-btn tx-type-tab" data-type="INCOME">Income</button>
+                  <button class="type-tab-btn tx-type-tab" data-type="EXPENSE">Expense</button>
+                </div>
+              </div>
+
+              <!-- Sorting & Page Size -->
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <select id="tx-sort-select" class="form-control form-select" style="min-width: 140px; width: auto;">
+                  <option value="date-desc">Newest First</option>
+                  <option value="date-asc">Oldest First</option>
+                  <option value="amount-desc">Highest Amount</option>
+                  <option value="amount-asc">Lowest Amount</option>
+                  <option value="category">Category (A-Z)</option>
+                </select>
+
+                <select id="tx-page-size-select" class="form-control form-select" style="width: 75px;">
+                  <option value="5">5</option>
+                  <option value="10" selected>10</option>
+                  <option value="20">20</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Dynamic Table Container -->
+            <div class="table-responsive">
+              <table class="finance-table">
+                <thead>
+                  <tr>
+                    <th>Transaction Details</th>
+                    <th>Category</th>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="transactions-tbody">
+                  <!-- Dynamically populated rows -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination Controls -->
+            <div class="pagination-bar">
+              <div class="pagination-info" id="tx-pagination-info">Showing 0-0 of 0 transactions</div>
+              <div class="pagination-controls" id="tx-pagination-controls">
+                <!-- Page buttons -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 3: BUDGETS MANAGEMENT -->
+        <section class="view-section" id="view-budgets">
+          <!-- Monthly Envelope Overall Card -->
+          <div class="card budget-overall-card budgets-header-summary" id="budget-overall-progress">
+            <!-- Dynamically populated overall meter -->
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
+            <div>
+              <h2 class="card-title">Category Spending Envelopes</h2>
+              <p class="card-subtitle">Track your limits, remaining buffers, and spending status</p>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="openEditBudgetModal('Food', 15000)">
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              <span>Set Category Budget</span>
+            </button>
+          </div>
+
+          <!-- Category Budget Cards Grid -->
+          <div class="budgets-grid" id="budgets-grid-container">
+            <!-- Dynamic Category Budget Cards -->
+          </div>
+        </section>
+
+        <!-- VIEW 4: SMART INSIGHTS -->
+        <section class="view-section" id="view-insights">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Comprehensive Financial Intelligence</h2>
+                <p class="card-subtitle">Automated insights, behavioral spending patterns, and wealth optimizations</p>
+              </div>
+              <span class="badge badge-emerald">Engine Online</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1rem;">
+              <div class="card" style="background: var(--surface-secondary);">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                  <div style="font-size: 1.5rem;">💡</div>
+                  <div>
+                    <div style="font-weight: 700;">Expense Anomaly Detection</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Identifies abnormal spikes across categories</div>
+                  </div>
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5;">
+                  Your shopping and dining spending spiked by 18% during mid-month sales. Rebalancing your discretionary envelope next week can restore a 45%+ net savings rate.
+                </p>
+              </div>
+
+              <div class="card" style="background: var(--surface-secondary);">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                  <div style="font-size: 1.5rem;">🎯</div>
+                  <div>
+                    <div style="font-weight: 700;">Compound Savings Potential</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Annual projections based on current habits</div>
+                  </div>
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5;">
+                  At your current average monthly savings of ₹52,500, you will accumulate <strong>₹6,30,000</strong> over 12 months before calculating investment yields.
+                </p>
+              </div>
+
+              <div class="card" style="background: var(--surface-secondary);">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
+                  <div style="font-size: 1.5rem;">🛡️</div>
+                  <div>
+                    <div style="font-weight: 700;">Emergency Cushion Gauge</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Coverage for fixed recurring obligations</div>
+                  </div>
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5;">
+                  Your fixed monthly baseline (Rent + Utilities) is ₹29,900. Your retained savings cushion covers over <strong>4.2 months</strong> of essential living expenses.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 5: ANALYTICS -->
+        <section class="view-section" id="view-analytics">
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">Financial Analytics & Multi-Month Performance</h2>
+                <p class="card-subtitle">Detailed breakdown of historical income streams, expense velocity, and capital retention</p>
+              </div>
+              <span class="badge badge-indigo">FastAPI Ready</span>
+            </div>
+
+            <div style="margin-top: 1.5rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+              <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">6-Month Total Inflow</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: var(--emerald); margin-top: 0.25rem;">₹5,97,000</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Average: ₹99,500 / month</div>
+              </div>
+
+              <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">6-Month Total Outflow</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: var(--rose); margin-top: 0.25rem;">₹3,21,100</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Average: ₹53,516 / month</div>
+              </div>
+
+              <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Cumulative Savings Retention</div>
+                <div style="font-size: 1.5rem; font-weight: 800; color: var(--indigo); margin-top: 0.25rem;">₹2,75,900</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">Overall Retention Rate: 46.2%</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW 6: USER PROFILE -->
+        <section class="view-section" id="view-profile">
+          <div class="card" style="max-width: 680px;">
+            <div class="card-header">
+              <div>
+                <h2 class="card-title">User Account & Preferences</h2>
+                <p class="card-subtitle">Manage personal details and application theme settings</p>
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 1.25rem; padding: 1.5rem 0; border-bottom: 1px solid var(--border-color);">
+              <div class="user-avatar user-avatar-initials" style="width: 64px; height: 64px; font-size: 1.5rem;">A</div>
+              <div>
+                <h3 class="user-profile-name" style="font-size: 1.25rem; font-weight: 800;">Ansh</h3>
+                <p class="user-profile-email" style="font-size: 0.875rem; color: var(--text-muted);">ansh@fintech.dev</p>
+                <span class="badge badge-emerald" style="margin-top: 0.35rem;">Pro Member</span>
+              </div>
+            </div>
+
+            <div style="padding-top: 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;">
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <div style="font-weight: 700; color: var(--text-primary);">Theme Preference</div>
+                  <div style="font-size: 0.8125rem; color: var(--text-muted);">Toggle between Dark-first and Light interfaces</div>
+                </div>
+                <button class="btn btn-secondary theme-toggle-btn">Toggle Theme</button>
+              </div>
+
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <div style="font-weight: 700; color: var(--text-primary);">Currency Display</div>
+                  <div style="font-size: 0.8125rem; color: var(--text-muted);">Indian Rupee (INR — ₹)</div>
+                </div>
+                <span class="badge badge-indigo">₹ INR</span>
+              </div>
+
+              <div style="display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <div style="font-weight: 700; color: var(--text-primary);">Backend Architecture</div>
+                  <div style="font-size: 0.8125rem; color: var(--text-muted);">Python FastAPI Ready Client</div>
+                </div>
+                <span class="badge badge-cyan">Phase 1 Standalone</span>
+              </div>
+
+              <div style="margin-top: 1rem;">
+                <button class="btn btn-danger" onclick="handleLogout()" style="width: 100%;">
+                  Sign Out of Account
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- ==================== FLOATING AI BUTTON & AI DRAWER ==================== -->
+  <button class="floating-ai-btn" id="floating-ai-trigger-btn" aria-label="Open AI Assistant">
+    <span>🤖</span>
+    <span>Ask Finance AI</span>
+  </button>
+
+  <div class="ai-drawer-backdrop" id="ai-drawer-backdrop">
+    <div class="ai-drawer" role="dialog" aria-modal="true" aria-label="Finance AI Assistant">
+      <div class="ai-drawer-header">
+        <div class="ai-header-info">
+          <div class="ai-avatar">🤖</div>
+          <div>
+            <div style="font-weight: 800; font-size: 0.9375rem; color: var(--text-primary);">Finance AI Assistant</div>
+            <div id="ai-provider-status-badge" style="font-size: 0.6875rem; color: var(--emerald); display: flex; align-items: center; gap: 0.35rem;">
+              <span class="status-indicator emerald" id="ai-status-indicator"></span>
+              <span id="ai-status-text">FastAPI Ready • AI Engine</span>
+            </div>
+          </div>
+        </div>
+        <div class="ai-header-actions">
+          <button class="btn btn-ghost btn-icon-sm" id="ai-clear-chat-btn" title="Clear Conversation" aria-label="Clear Conversation">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+          </button>
+          <button class="btn btn-ghost btn-icon-sm" id="ai-drawer-close-btn" aria-label="Close Assistant">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- AI Chat Messages History -->
+      <div class="ai-chat-messages" id="ai-chat-messages" role="log" aria-live="polite">
+        <div class="chat-bubble assistant" id="ai-welcome-bubble">
+          Hello! 👋 I'm your intelligent finance assistant. I have real-time access to your verified transactions, budgets, savings rate, and financial health score. What would you like to explore today?
+        </div>
+      </div>
+
+      <!-- Quick Prompt Suggestion Chips -->
+      <div class="ai-quick-prompts" id="ai-quick-prompts">
+        <button class="quick-prompt-chip" type="button">Why is my financial health score calculated as this?</button>
+        <button class="quick-prompt-chip" type="button">What if I save ₹5,000 more every month?</button>
+        <button class="quick-prompt-chip" type="button">Explain my cashflow forecast</button>
+        <button class="quick-prompt-chip" type="button">What smart actions do you recommend?</button>
+        <button class="quick-prompt-chip" type="button">What actions have I executed?</button>
+        <button class="quick-prompt-chip" type="button">How much did I spend this month?</button>
+        <button class="quick-prompt-chip" type="button">How much did I save this month?</button>
+        <button class="quick-prompt-chip" type="button">Which category is costing me the most?</button>
+        <button class="quick-prompt-chip" type="button">How is my budget progress?</button>
+        <button class="quick-prompt-chip" type="button">How is my financial health?</button>
+      </div>
+
+      <!-- AI Input Bar -->
+      <form class="ai-chat-input-area" id="ai-chat-form">
+        <textarea id="ai-user-input" class="ai-input" placeholder="Ask anything about your finances..." rows="1" maxlength="1000"></textarea>
+        <button class="btn btn-primary btn-icon" id="ai-send-btn" type="submit" aria-label="Send query">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- 1. Add / Edit Transaction Modal -->
+  <div class="modal-backdrop" id="tx-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="card-title" id="tx-modal-title">Add New Transaction</h3>
+        <button class="btn btn-ghost btn-icon-sm" onclick="closeTxModal()" aria-label="Close modal">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <form id="tx-modal-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="tx-modal-type">Transaction Type</label>
+            <select id="tx-modal-type" class="form-control form-select" required>
+              <option value="expense">Expense (-)</option>
+              <option value="income">Income (+)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tx-modal-category">Category</label>
+            <select id="tx-modal-category" class="form-control form-select" required>
+              <option value="Food">🍔 Food</option>
+              <option value="Rent">🏠 Rent</option>
+              <option value="Travel">🚗 Travel</option>
+              <option value="Shopping">🛍️ Shopping</option>
+              <option value="Entertainment">🎬 Entertainment</option>
+              <option value="Utilities">⚡ Utilities</option>
+              <option value="Healthcare">💊 Healthcare</option>
+              <option value="Education">📚 Education</option>
+              <option value="Salary">💼 Salary</option>
+              <option value="Freelance">💻 Freelance</option>
+              <option value="Investment">📈 Investment</option>
+              <option value="Other">📦 Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tx-modal-amount">Amount (₹ INR)</label>
+            <input type="number" id="tx-modal-amount" class="form-control" placeholder="e.g. 5000" min="1" step="1" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tx-modal-description">Description</label>
+            <input type="text" id="tx-modal-description" class="form-control" placeholder="e.g. Grocery store purchase" required>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="tx-modal-date">Date</label>
+            <input type="date" id="tx-modal-date" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeTxModal()">Cancel</button>
+          <button type="submit" class="btn btn-emerald">Save Transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Set / Adjust Budget Modal -->
+  <div class="modal-backdrop" id="budget-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="card-title" id="budget-modal-title">Set Category Budget</h3>
+        <button class="btn btn-ghost btn-icon-sm" onclick="closeBudgetModal()" aria-label="Close modal">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <form id="budget-modal-form">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="budget-modal-category">Category</label>
+            <select id="budget-modal-category" class="form-control form-select" required>
+              <option value="Food">🍔 Food</option>
+              <option value="Rent">🏠 Rent</option>
+              <option value="Travel">🚗 Travel</option>
+              <option value="Shopping">🛍️ Shopping</option>
+              <option value="Entertainment">🎬 Entertainment</option>
+              <option value="Utilities">⚡ Utilities</option>
+              <option value="Healthcare">💊 Healthcare</option>
+              <option value="Education">📚 Education</option>
+              <option value="Other">📦 Other</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="budget-modal-amount">Monthly Budget Limit (₹ INR)</label>
+            <input type="number" id="budget-modal-amount" class="form-control" placeholder="e.g. 15000" min="100" step="100" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeBudgetModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Budget</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Delete Confirmation Modal -->
+  <div class="modal-backdrop" id="tx-delete-modal">
+    <div class="modal-container" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="card-title">Delete Transaction?</h3>
+        <button class="btn btn-ghost btn-icon-sm" onclick="closeDeleteTxModal()" aria-label="Close modal">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.875rem; color: var(--text-secondary);">
+          Are you sure you want to permanently delete this transaction? This will instantly recalculate your savings, health score, insights, and charts.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteTxModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" id="tx-delete-confirm-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Add / Edit Financial Goal Modal -->
+  <div class="modal-backdrop" id="goal-modal">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 class="card-title" id="goal-modal-title">Add Financial Goal</h3>
+        <button class="btn btn-ghost btn-icon-sm" onclick="closeGoalModal()" aria-label="Close modal">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <form id="goal-modal-form">
+        <input type="hidden" id="goal-modal-id">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="goal-modal-name">Goal Name</label>
+            <input type="text" id="goal-modal-name" class="form-control" placeholder="e.g. Emergency Fund, New Laptop, Goa Trip" required maxlength="150">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="goal-modal-category">Category</label>
+            <select id="goal-modal-category" class="form-control form-select" required>
+              <option value="savings">💰 General Savings</option>
+              <option value="emergency_fund">🛡️ Emergency Fund</option>
+              <option value="debt_payoff">💳 Debt Payoff</option>
+              <option value="investment">📈 Investment</option>
+              <option value="retirement">🌴 Retirement</option>
+              <option value="purchase">🛍️ Major Purchase</option>
+              <option value="travel">✈️ Travel & Vacation</option>
+              <option value="education">🎓 Education</option>
+            </select>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="goal-modal-target-amount">Target Amount (₹ INR)</label>
+              <input type="number" id="goal-modal-target-amount" class="form-control" placeholder="e.g. 100000" min="1" step="1" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="goal-modal-current-amount">Current Saved (₹ INR)</label>
+              <input type="number" id="goal-modal-current-amount" class="form-control" placeholder="e.g. 20000" min="0" step="1" value="0" required>
+            </div>
+          </div>
+
+          <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+              <label class="form-label" for="goal-modal-target-date">Target Deadline</label>
+              <input type="date" id="goal-modal-target-date" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="goal-modal-priority">Priority Level</label>
+              <select id="goal-modal-priority" class="form-control form-select" required>
+                <option value="low">Low Priority</option>
+                <option value="medium" selected>Medium Priority</option>
+                <option value="high">High Priority</option>
+                <option value="critical">Critical / Essential</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeGoalModal()">Cancel</button>
+          <button type="submit" class="btn btn-emerald" id="goal-modal-submit-btn">Save Goal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Delete Goal Confirmation Modal -->
+  <div class="modal-backdrop" id="goal-delete-modal">
+    <div class="modal-container" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3 class="card-title">Delete Financial Goal?</h3>
+        <button class="btn btn-ghost btn-icon-sm" onclick="closeDeleteGoalModal()" aria-label="Close modal">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.875rem; color: var(--text-secondary);">
+          Are you sure you want to permanently delete this financial goal?
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeDeleteGoalModal()">Cancel</button>
+        <button type="button" class="btn btn-danger" id="goal-delete-confirm-btn">Delete Goal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Phase 3.8 Smart Action Review & Confirmation Modal -->
+  <div class="modal-backdrop" id="action-confirm-modal">
+    <div class="modal-container" style="max-width: 540px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="card-title" id="action-modal-title">Review Smart Financial Action</h3>
+          <div class="card-subtitle" id="action-modal-type">BUDGET_ADJUSTMENT</div>
+        </div>
+        <button class="btn btn-ghost btn-icon-sm" onclick="closeActionConfirmModal()" aria-label="Close modal">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="action-modal-evidence-box">
+          <div style="font-weight: 700; font-size: 0.8125rem; color: var(--indigo); margin-bottom: 0.25rem;">VERIFIED EVIDENCE</div>
+          <p id="action-modal-evidence" style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;"></p>
+        </div>
+
+        <div style="margin-top: 1rem;">
+          <div style="font-weight: 700; font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.25rem;">PROPOSED CHANGE & IMPACT</div>
+          <p id="action-modal-description" style="font-size: 0.875rem; color: var(--text-primary); margin: 0 0 0.5rem 0; font-weight: 500;"></p>
+          <p id="action-modal-impact" style="font-size: 0.8125rem; color: var(--emerald); margin: 0;"></p>
+        </div>
+
+        <div class="action-warning-banner" style="margin-top: 1rem; padding: 0.75rem; border-radius: var(--radius-md); background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);">
+          <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+            <span style="font-size: 1.1rem;">⚠️</span>
+            <div style="font-size: 0.8125rem; color: var(--amber);">
+              <strong>User Confirmation Required:</strong> Executing this action will apply verified modifications to your live financial database. You can reject this proposal at any time.
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: 1rem;">
+          <label class="form-label" for="action-modal-note">Optional Note or Execution Rationale</label>
+          <input type="text" id="action-modal-note" class="form-control" placeholder="e.g. Approved realignment based on monthly trend" maxlength="200" />
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: space-between;">
+        <button type="button" class="btn btn-danger btn-sm" id="action-modal-reject-btn">Reject Proposal</button>
+        <div style="display: flex; gap: 0.5rem;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="closeActionConfirmModal()">Cancel</button>
+          <button type="button" class="btn btn-emerald btn-sm" id="action-modal-confirm-btn">Confirm & Execute</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. Phase 3.8 Action Audit History Modal -->
+  <div class="modal-backdrop" id="action-history-modal">
+    <div class="modal-container" style="max-width: 720px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="card-title">Smart Financial Action Audit Trail</h3>
+          <div class="card-subtitle">Immutable log of confirmed, executed, and rejected automations</div>
+        </div>
+        <button class="btn btn-ghost btn-icon-sm" onclick="closeActionHistoryModal()" aria-label="Close modal">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="modal-body" style="max-height: 480px; overflow-y: auto;">
+        <div id="action-history-container">
+          <!-- Dynamically populated via JavaScript -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeActionHistoryModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 8. Phase 3.9 Interactive What-If Decision Simulator Modal -->
+  <div class="modal-backdrop" id="simulation-modal">
+    <div class="modal-container" style="max-width: 620px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="card-title">What-If Financial Decision Simulator</h3>
+          <div class="card-subtitle">Test hypothetical shifts before committing financial changes</div>
+        </div>
+        <button class="btn btn-ghost btn-icon-sm" onclick="closeSimulationModal()" aria-label="Close modal">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <form id="simulation-form" onsubmit="submitCustomSimulation(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="sim-scenario-select">Simulation Scenario</label>
+            <select id="sim-scenario-select" class="form-control form-select" required onchange="handleSimulationScenarioChange()">
+              <option value="INCREASE_SAVINGS">Increase Monthly Savings (₹)</option>
+              <option value="REDUCE_EXPENSES">Trim Discretionary Expenses (%)</option>
+              <option value="INCREASE_EXPENSES">Add Monthly Expenditure (₹)</option>
+              <option value="INCOME_INCREASE">Income Raise / Bonus (%)</option>
+              <option value="INCOME_REDUCTION">Income Reduction / Drop (%)</option>
+              <option value="GOAL_DEADLINE_CHANGE">Adjust Goal Target Deadline (Months)</option>
+              <option value="MONTHLY_CONTRIBUTION_CHANGE">Modify Goal Monthly Contribution (₹)</option>
+              <option value="DEBT_PAYMENT_CHANGE">Accelerate Debt Paydown (₹)</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="sim-amount-group">
+            <label class="form-label" id="sim-value-label" for="sim-value-input">Amount (₹ INR)</label>
+            <input type="number" id="sim-value-input" class="form-control" placeholder="e.g. 5000" min="0" step="100" value="5000" required />
+          </div>
+
+          <div class="sim-notice-banner" style="margin-top: 1rem; padding: 0.75rem; border-radius: var(--radius-md); background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3);">
+            <div style="font-size: 0.8125rem; color: var(--indigo); font-weight: 500;">
+              ℹ️ <strong>Hypothetical Simulation:</strong> This calculation runs purely in-memory and will <em>never</em> modify your database records or active budgets.
+            </div>
+          </div>
+
+          <div id="modal-simulation-result" style="margin-top: 1.25rem;"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeSimulationModal()">Close</button>
+          <button type="submit" class="btn btn-primary" id="sim-submit-btn">Run Simulation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 9. Phase 3.9 Grounded Financial Explanation Modal -->
+  <div class="modal-backdrop" id="explanation-modal">
+    <div class="modal-container" style="max-width: 580px;">
+      <div class="modal-header">
+        <div>
+          <h3 class="card-title" id="explanation-modal-title">Grounded Financial Explanation</h3>
+          <div class="card-subtitle" id="explanation-modal-type">EXPLANATION</div>
+        </div>
+        <button class="btn btn-ghost btn-icon-sm" onclick="closeExplanationModal()" aria-label="Close modal">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 1rem;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Summary</div>
+          <p id="explanation-modal-summary" style="font-size: 0.9375rem; color: var(--text-primary); font-weight: 600; margin: 0.25rem 0 0 0;"></p>
+        </div>
+
+        <div style="background: var(--surface-secondary); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1rem;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--indigo); text-transform: uppercase; margin-bottom: 0.25rem;">Verified Database Evidence</div>
+          <p id="explanation-modal-evidence" style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;"></p>
+        </div>
+
+        <div style="background: var(--surface-secondary); padding: 1rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1rem;">
+          <div style="font-size: 0.75rem; font-weight: 700; color: var(--emerald); text-transform: uppercase; margin-bottom: 0.25rem;">Deterministic Calculation Basis</div>
+          <p id="explanation-modal-basis" style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;"></p>
+        </div>
+
+        <div style="font-size: 0.75rem; color: var(--text-muted);" id="explanation-modal-limitations"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeExplanationModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Global Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- Modular Scripts Architecture -->
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/transactions.js"></script>
+  <script src="js/budgets.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

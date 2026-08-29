@@ -1,0 +1,216 @@
+/* ==========================================================================
+   SMART PERSONAL FINANCE DASHBOARD - RESPONSIVE STYLES
+   Breakpoints: Desktop (1366+), Laptop (1024-1365), Tablet (768-1023), Mobile (<=767)
+   ========================================================================== */
+
+/* --- Mobile Menu Button (Hidden on Desktop) --- */
+.mobile-menu-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+}
+
+.mobile-menu-btn:hover {
+  background: var(--surface-secondary);
+}
+
+/* Sidebar Backdrop on Mobile/Tablet */
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 95;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity var(--transition-normal), visibility var(--transition-normal);
+}
+
+.sidebar-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* --- Breakpoint: Laptop (<= 1200px) --- */
+@media (max-width: 1200px) {
+  .summary-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .health-and-insights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .insights-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Breakpoint: Tablet (<= 1024px) --- */
+@media (max-width: 1024px) {
+  :root {
+    --sidebar-width: 240px;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .view-container {
+    padding: 1.5rem;
+  }
+}
+
+/* --- Breakpoint: Mobile & Small Tablet (<= 768px) --- */
+@media (max-width: 768px) {
+  .mobile-menu-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar {
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-xl);
+    width: 280px;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .main-wrapper {
+    margin-left: 0;
+  }
+
+  .top-header {
+    padding: 0 1.25rem;
+  }
+
+  .header-date-badge {
+    display: none;
+  }
+
+  .summary-cards-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .view-container {
+    padding: 1.25rem;
+    gap: 1.5rem;
+  }
+
+  .transactions-filter-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-group-left {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-input-wrapper {
+    width: 100%;
+  }
+
+  .type-filter-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .type-tab-btn {
+    text-align: center;
+  }
+
+  .budgets-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Drawer on Mobile */
+  :root {
+    --drawer-width: 100%;
+  }
+
+  .floating-ai-btn {
+    bottom: 1.25rem;
+    right: 1.25rem;
+    padding: 0.75rem 1.125rem;
+    font-size: 0.8125rem;
+  }
+
+  .floating-ai-btn span {
+    display: inline;
+  }
+
+  .modal-container {
+    max-height: 95vh;
+    padding: 0;
+  }
+
+  .modal-body {
+    padding: 1.25rem;
+  }
+
+  #toast-container {
+    top: 1rem;
+    right: 1rem;
+    left: 1rem;
+  }
+
+  .toast {
+    min-width: unset;
+    max-width: 100%;
+  }
+}
+
+/* --- Breakpoint: Small Mobile (<= 480px, e.g. 390px) --- */
+@media (max-width: 480px) {
+  .greeting-title {
+    font-size: 1.05rem;
+  }
+
+  .greeting-subtitle {
+    font-size: 0.75rem;
+  }
+
+  .btn-header-text {
+    display: none;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .score-gauge-wrapper {
+    width: 140px;
+    height: 140px;
+  }
+
+  .score-number {
+    font-size: 2rem;
+  }
+
+  .finance-table th,
+  .finance-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8125rem;
+  }
+
+  .tx-category-badge {
+    font-size: 0.6875rem;
+    padding: 0.15rem 0.45rem;
+  }
+
+  .pagination-bar {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+}
