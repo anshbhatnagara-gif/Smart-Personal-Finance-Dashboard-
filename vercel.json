@@ -1,12 +1,15 @@
 {
   "version": 2,
   "name": "smart-personal-finance-dashboard",
-  "public": true,
   "cleanUrls": true,
   "rewrites": [
     {
       "source": "/api/:path*",
       "destination": "https://smart-personal-finance-dashboard-zed3.onrender.com/api/:path*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/$1"
     }
   ],
   "headers": [
@@ -29,4 +32,3 @@
     }
   ]
 }
-
