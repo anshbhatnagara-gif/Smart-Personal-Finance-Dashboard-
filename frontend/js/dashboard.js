@@ -398,14 +398,24 @@ function initAiAssistant() {
   triggerBtns.forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
-      if (backdrop) {
-        backdrop.classList.add("active");
-        if (input) {
-          setTimeout(() => input.focus(), 150);
-        }
-      }
+      window.openAiAssistant();
     });
   });
+
+  window.openAiAssistant = function() {
+    if (backdrop) {
+      backdrop.classList.add("active");
+      if (input) {
+        setTimeout(() => input.focus(), 150);
+      }
+    }
+  };
+
+  window.closeAiAssistant = function() {
+    if (backdrop) {
+      backdrop.classList.remove("active");
+    }
+  };
 
   // Close Drawer
   if (closeBtn && backdrop) {

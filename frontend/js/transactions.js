@@ -432,8 +432,6 @@ async function handleConfirmDeleteTransaction() {
   try {
     await apiDelete(`/transactions/${deletingTxId}`);
     showToast("Transaction Deleted", "Transaction permanently removed.", "success");
-    closeDeleteTxModal();
-
     await Promise.all([
       fetchAndRenderTransactions(),
       loadAppData()
@@ -442,6 +440,13 @@ async function handleConfirmDeleteTransaction() {
     console.error("Failed to delete transaction:", err);
     showToast("Delete Failed", err.message || "Could not delete transaction.", "danger");
   } finally {
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Delete Transaction";
+    }
+  }
+}
+
 // Expose functions globally for inline HTML onclick attributes
 window.openAddTxModal = openAddTransactionModal;
 window.openAddTransactionModal = openAddTransactionModal;
@@ -450,4 +455,6 @@ window.closeTxModal = closeTxModal;
 window.openDeleteTxModal = openDeleteTxModal;
 window.closeDeleteTxModal = closeDeleteTxModal;
 window.goToTxPage = goToTxPage;
+window.initTransactions = initTransactions;
+
 

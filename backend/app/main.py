@@ -59,6 +59,20 @@ async def global_exception_handler(request: Request, exc: Exception) -> JSONResp
         }
     )
 
+# Security Headers & Process Time Middleware
+@app.middleware("http")
+async def add_security_headers_and_timing(request: Request, call_next):
+    import time
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = f"{process_time:.4f}s"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
 # Configure Cross-Origin Resource Sharing (CORS)
 app.add_middleware(
     CORSMiddleware,
@@ -119,3 +133,45 @@ async def health_check(db: Session = Depends(get_db)) -> HealthResponse:
                 "database": "disconnected"
             }
         )
+
+
+@app.get(
+    "/health/live",
+    tags=["Health"],
+    summary="Liveness Probe"
+)
+async def liveness_probe() -> dict:
+    """Liveness probe for orchestrator container monitoring."""
+    return {
+        "success": True,
+        "status": "alive",
+        "service": settings.PROJECT_NAME
+    }
+
+
+@app.get(
+    "/health/ready",
+    tags=["Health"],
+    summary="Readiness Probe"
+)
+async def readiness_probe(db: Session = Depends(get_db)) -> dict:
+    """Readiness probe checking database connectivity and provider readiness."""
+    try:
+        db.execute(text("SELECT 1"))
+        return {
+            "success": True,
+            "status": "ready",
+            "database": "connected",
+            "ai_provider": settings.AI_PROVIDER
+        }
+    except Exception as exc:
+        logger.error(f"Readiness probe failed: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "success": False,
+                "status": "not_ready",
+                "database": "disconnected"
+            }
+        )
+
