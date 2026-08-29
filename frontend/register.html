@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Create Account — Smart Personal Finance Dashboard</title>
-  <meta name="description" content="Create a new account to unlock algorithmic financial health scoring, AI spending optimizations, and multi-month trend analysis.">
+  <meta name="description"
+    content="Create a new account to unlock algorithmic financial health scoring, AI spending optimizations, and multi-month trend analysis.">
 
   <!-- Core Stylesheets -->
   <link rel="stylesheet" href="css/style.css">
@@ -20,8 +22,8 @@
       padding: 1.5rem;
       position: relative;
       background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
-                  radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
-                  var(--bg-primary);
+        radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
+        var(--bg-primary);
     }
 
     .auth-card {
@@ -74,14 +76,17 @@
     }
   </style>
 </head>
+
 <body>
 
   <div class="auth-page-wrapper">
     <div class="auth-card">
       <div class="auth-brand">
+
         <div class="brand-logo">
           <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6">
+            </path>
           </svg>
         </div>
         <div class="brand-text">
@@ -120,18 +125,24 @@
 
         <div class="form-group">
           <label class="form-label" for="reg-confirm-password">Confirm Password</label>
-          <input type="password" id="reg-confirm-password" class="form-control" placeholder="Re-enter password" required>
+          <input type="password" id="reg-confirm-password" class="form-control" placeholder="Re-enter password"
+            required>
           <div class="form-error" id="reg-confirm-error"></div>
         </div>
 
         <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
-          <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); cursor: pointer;">
+          <label
+            style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8125rem; color: var(--text-secondary); cursor: pointer;">
             <input type="checkbox" required checked style="accent-color: var(--indigo);">
             <span>I agree to terms & security policy</span>
           </label>
 
           <button type="button" class="btn btn-ghost btn-icon-sm theme-toggle-btn" title="Toggle Theme">
-            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+              </path>
+            </svg>
           </button>
         </div>
 
@@ -141,7 +152,7 @@
       </form>
 
       <div style="margin-top: 1.75rem; text-align: center; font-size: 0.875rem; color: var(--text-secondary);">
-        Already registered? 
+        Already registered?
         <a href="login.html" style="color: var(--indigo); font-weight: 700; text-decoration: none;">Sign In</a>
       </div>
     </div>
@@ -154,4 +165,5 @@
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
 </body>
+
 </html>
