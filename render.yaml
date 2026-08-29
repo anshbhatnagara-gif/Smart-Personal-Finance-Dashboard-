@@ -29,8 +29,9 @@ services:
       - key: ALLOWED_ORIGINS
         sync: false  # Configure your Vercel frontend URL (e.g. https://smart-personal-finance.vercel.app)
       - key: AI_PROVIDER
-        value: mock  # Set to 'gemini' and provide AI_API_KEY when live Google Gemini is desired
+        value: gemini
       - key: AI_API_KEY
-        sync: false
+        sync: false  # Configure your Google Gemini API Key in Render Dashboard
       - key: AI_MODEL
-        sync: false
+        value: gemini-2.5-flash
+
