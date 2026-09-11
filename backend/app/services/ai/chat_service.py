@@ -59,8 +59,12 @@ class ChatService:
             logger.warning(f"AI Provider configuration unavailable: {exc}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="AI service is temporarily unavailable."
+                detail=f"AI provider configuration issue: {str(exc)}"
             )
+
+        logger.info(
+            f"AI Chat: Processing message for user_id={user_id} using {provider.provider_name}/{provider.model_name} (msg_len={len(cleaned_message)})"
+        )
 
         # 5. Execute chat with tool calling
         try:
@@ -69,6 +73,10 @@ class ChatService:
                 message=cleaned_message,
                 history=history_dicts,
                 tool_executor=tool_executor
+            )
+
+            logger.info(
+                f"AI Chat: Response generated successfully for user_id={user_id} (tool_used={result.get('tool_used', False)})"
             )
 
             return AIChatResponseData(
@@ -81,8 +89,8 @@ class ChatService:
         except HTTPException:
             raise
         except Exception as exc:
-            logger.error(f"AI Chat error: {exc}")
+            logger.error(f"AI Chat execution failure for user_id={user_id}: {exc}", exc_info=True)
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="AI service is temporarily unavailable."
+                detail=f"Financial AI reasoning error: {str(exc)}"
             )
