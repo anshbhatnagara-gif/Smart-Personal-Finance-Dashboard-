@@ -40,6 +40,12 @@ async function initApp() {
     if (typeof updateAllCharts === "function") {
       updateAllCharts();
     }
+    const activeSection = document.querySelector(".view-section.active");
+    if (activeSection) {
+      if (activeSection.id === "view-insights" && typeof loadInsightsView === "function") loadInsightsView();
+      if (activeSection.id === "view-analytics" && typeof loadAnalyticsView === "function") loadAnalyticsView();
+      if (activeSection.id === "view-budgets" && typeof renderBudgetsView === "function") renderBudgetsView();
+    }
   });
 
   // 7. Load real backend data from FastAPI
@@ -140,6 +146,19 @@ function initNavigation() {
           section.classList.remove("active");
         }
       });
+
+      // Dynamically load view content from real FastAPI backend
+      if (targetView === "insights") {
+        loadInsightsView();
+      } else if (targetView === "analytics") {
+        loadAnalyticsView();
+      } else if (targetView === "profile") {
+        setupProfileForm();
+      } else if (targetView === "budgets") {
+        if (typeof renderBudgetsView === "function") renderBudgetsView();
+      } else if (targetView === "transactions") {
+        if (typeof fetchAndRenderTransactions === "function") fetchAndRenderTransactions();
+      }
 
       closeMobileSidebar();
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -872,15 +891,19 @@ async function loadGoalsUI() {
       const pct = Math.min(100, Math.max(0, g.progress_percentage || 0));
       const statusClass = g.status === "COMPLETED" ? "badge-emerald" : (g.status === "AHEAD" ? "badge-cyan" : (g.status === "BEHIND" ? "badge-amber" : "badge-indigo"));
       const isCompleted = g.status === "COMPLETED";
+      const goalJsonStr = JSON.stringify(g).replace(/'/g, "&#39;");
 
       return `
         <div class="goal-card">
           <div class="goal-card-header">
             <div>
               <span class="badge ${statusClass}" style="font-size: 0.6875rem;">${g.status}</span>
-              <span class="badge badge-secondary" style="font-size: 0.6875rem; margin-left: 0.35rem;">${g.priority.toUpperCase()}</span>
+              <span class="badge badge-secondary" style="font-size: 0.6875rem; margin-left: 0.35rem;">${(g.priority || 'MEDIUM').toUpperCase()}</span>
             </div>
             <div style="display: flex; gap: 0.25rem;">
+              <button class="btn btn-ghost btn-icon-sm" type="button" title="Edit Goal" onclick='openEditGoalModal(${goalJsonStr})'>
+                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+              </button>
               <button class="btn btn-ghost btn-icon-sm" type="button" title="Ask AI About Goal" onclick="askAiAboutGoal('${encodeURIComponent(g.name)}')">
                 <span>🤖</span>
               </button>
@@ -939,10 +962,15 @@ window.openAddGoalModal = function() {
   const title = document.getElementById("goal-modal-title");
   const idInput = document.getElementById("goal-modal-id");
   const dateInput = document.getElementById("goal-modal-target-date");
+  const submitBtn = document.getElementById("goal-modal-submit-btn");
 
   if (form) form.reset();
   if (idInput) idInput.value = "";
   if (title) title.textContent = "Add Financial Goal";
+  if (submitBtn) {
+    submitBtn.textContent = "Save Goal";
+    submitBtn.disabled = false;
+  }
 
   // Set default target date to 6 months from today
   if (dateInput) {
@@ -952,6 +980,46 @@ window.openAddGoalModal = function() {
   }
 
   if (modal) modal.classList.add("active");
+  const nameInput = document.getElementById("goal-modal-name");
+  if (nameInput) {
+    setTimeout(() => nameInput.focus(), 150);
+  }
+};
+
+window.openEditGoalModal = function(goal) {
+  if (typeof goal === "string") {
+    try { goal = JSON.parse(goal); } catch (e) {}
+  }
+  if (!goal) return;
+
+  const modal = document.getElementById("goal-modal");
+  const title = document.getElementById("goal-modal-title");
+  const idInput = document.getElementById("goal-modal-id");
+  const nameInput = document.getElementById("goal-modal-name");
+  const categorySelect = document.getElementById("goal-modal-category");
+  const targetAmountInput = document.getElementById("goal-modal-target-amount");
+  const currentAmountInput = document.getElementById("goal-modal-current-amount");
+  const dateInput = document.getElementById("goal-modal-target-date");
+  const prioritySelect = document.getElementById("goal-modal-priority");
+  const submitBtn = document.getElementById("goal-modal-submit-btn");
+
+  if (idInput) idInput.value = goal.goal_id || goal.id || "";
+  if (nameInput) nameInput.value = goal.name || "";
+  if (categorySelect) categorySelect.value = goal.category || "savings";
+  if (targetAmountInput) targetAmountInput.value = goal.target_amount || "";
+  if (currentAmountInput) currentAmountInput.value = goal.current_amount || 0;
+  if (dateInput) dateInput.value = goal.target_date || "";
+  if (prioritySelect) prioritySelect.value = goal.priority || "medium";
+  if (title) title.textContent = "Edit Financial Goal";
+  if (submitBtn) {
+    submitBtn.textContent = "Update Goal";
+    submitBtn.disabled = false;
+  }
+
+  if (modal) modal.classList.add("active");
+  if (nameInput) {
+    setTimeout(() => nameInput.focus(), 150);
+  }
 };
 
 window.closeGoalModal = function() {
@@ -989,16 +1057,63 @@ window.askAiAboutGoal = function(encodedGoalName) {
 // Handle Goal Form Submission
 document.addEventListener("DOMContentLoaded", () => {
   const goalForm = document.getElementById("goal-modal-form");
-  if (goalForm) {
+  const goalSubmitBtn = document.getElementById("goal-modal-submit-btn");
+
+  if (goalSubmitBtn && !goalSubmitBtn.dataset.bound) {
+    goalSubmitBtn.dataset.bound = "true";
+    goalSubmitBtn.addEventListener("click", (e) => {
+      if (goalForm && typeof goalForm.requestSubmit === "function") {
+        e.preventDefault();
+        goalForm.requestSubmit();
+      }
+    });
+  }
+
+  if (goalForm && !goalForm.dataset.bound) {
+    goalForm.dataset.bound = "true";
     goalForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
+      if (e && typeof e.preventDefault === "function") {
+        e.preventDefault();
+      }
       const idInput = document.getElementById("goal-modal-id");
-      const name = document.getElementById("goal-modal-name").value.trim();
-      const category = document.getElementById("goal-modal-category").value;
-      const targetAmount = parseFloat(document.getElementById("goal-modal-target-amount").value);
-      const currentAmount = parseFloat(document.getElementById("goal-modal-current-amount").value || "0");
-      const targetDate = document.getElementById("goal-modal-target-date").value;
-      const priority = document.getElementById("goal-modal-priority").value;
+      const nameEl = document.getElementById("goal-modal-name") || document.querySelector("#goal-modal-form input[type='text']");
+      const categoryEl = document.getElementById("goal-modal-category") || document.querySelector("#goal-modal-form select:not([id='goal-modal-priority'])");
+      const targetAmountEl = document.getElementById("goal-modal-target-amount") || document.querySelector("#goal-modal-form input[type='number']");
+      const currentAmountEl = document.getElementById("goal-modal-current-amount");
+      const targetDateEl = document.getElementById("goal-modal-target-date") || document.querySelector("#goal-modal-form input[type='date']");
+      const priorityEl = document.getElementById("goal-modal-priority") || document.querySelector("#goal-modal-form select[id='goal-modal-priority']");
+      const submitBtn = document.getElementById("goal-modal-submit-btn") || document.querySelector("#goal-modal-form button[type='submit']");
+
+      const name = (nameEl && nameEl.value) ? nameEl.value.trim() : "";
+      const category = (categoryEl && categoryEl.value) ? categoryEl.value : "savings";
+      const targetAmount = parseFloat(targetAmountEl && targetAmountEl.value ? targetAmountEl.value : "0");
+      const currentAmount = parseFloat(currentAmountEl && currentAmountEl.value ? currentAmountEl.value : "0");
+      const targetDate = (targetDateEl && targetDateEl.value) ? targetDateEl.value : "";
+      const priority = (priorityEl && priorityEl.value) ? priorityEl.value : "medium";
+
+      if (!name) {
+        showToast("Validation Error", "Please provide a goal name.", "warning");
+        if (nameEl) nameEl.focus();
+        return;
+      }
+
+      if (isNaN(targetAmount) || targetAmount <= 0) {
+        showToast("Validation Error", "Please provide a valid positive target amount.", "warning");
+        if (targetAmountEl) targetAmountEl.focus();
+        return;
+      }
+
+      if (!targetDate) {
+        showToast("Validation Error", "Please select a target deadline date.", "warning");
+        if (targetDateEl) targetDateEl.focus();
+        return;
+      }
+
+      const isEdit = idInput && idInput.value;
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = isEdit ? "Updating Goal..." : "Saving Goal...";
+      }
 
       try {
         const payload = {
@@ -1010,7 +1125,7 @@ document.addEventListener("DOMContentLoaded", () => {
           priority
         };
 
-        if (idInput && idInput.value) {
+        if (isEdit) {
           await financeAPI.updateGoal(parseInt(idInput.value, 10), payload);
           showToast("Goal Updated", `"${name}" updated successfully.`, "success");
         } else {
@@ -1021,7 +1136,12 @@ document.addEventListener("DOMContentLoaded", () => {
         closeGoalModal();
         await loadGoalsUI();
       } catch (err) {
-        showToast("Error", err.message || "Failed to save financial goal.", "error");
+        showToast("Error", err.message || "Failed to save financial goal.", "danger");
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = isEdit ? "Update Goal" : "Save Goal";
+        }
       }
     });
   }
@@ -1030,17 +1150,426 @@ document.addEventListener("DOMContentLoaded", () => {
   if (deleteGoalConfirmBtn) {
     deleteGoalConfirmBtn.addEventListener("click", async () => {
       if (!pendingDeleteGoalId) return;
+      deleteGoalConfirmBtn.disabled = true;
+      deleteGoalConfirmBtn.textContent = "Deleting...";
+
       try {
         await financeAPI.deleteGoal(pendingDeleteGoalId);
         showToast("Goal Deleted", "Financial goal was removed.", "success");
         closeDeleteGoalModal();
         await loadGoalsUI();
       } catch (err) {
-        showToast("Error", err.message || "Failed to delete financial goal.", "error");
+        showToast("Error", err.message || "Failed to delete financial goal.", "danger");
+      } finally {
+        deleteGoalConfirmBtn.disabled = false;
+        deleteGoalConfirmBtn.textContent = "Delete Goal";
       }
     });
   }
+
+  // Global Escape key listener for all modals
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const goalModal = document.getElementById("goal-modal");
+      const goalDelModal = document.getElementById("goal-delete-modal");
+      const actionModal = document.getElementById("action-confirm-modal");
+      const historyModal = document.getElementById("action-history-modal");
+      const simModal = document.getElementById("simulation-modal");
+      const expModal = document.getElementById("explanation-modal");
+
+      if (goalModal && goalModal.classList.contains("active")) closeGoalModal();
+      if (goalDelModal && goalDelModal.classList.contains("active")) closeDeleteGoalModal();
+      if (actionModal && actionModal.classList.contains("active")) closeActionConfirmModal();
+      if (historyModal && historyModal.classList.contains("active")) closeActionHistoryModal();
+      if (simModal && simModal.classList.contains("active")) closeSimulationModal();
+      if (expModal && expModal.classList.contains("active")) closeExplanationModal();
+    }
+  });
+
+  // Setup Profile Form
+  setupProfileForm();
 });
+
+/**
+ * Setup Profile Management Form & Save handler
+ */
+function setupProfileForm() {
+  const form = document.getElementById("profile-edit-form");
+  const nameInput = document.getElementById("profile-name-input");
+  const emailInput = document.getElementById("profile-email-input");
+  const passwordInput = document.getElementById("profile-password-input");
+  const saveBtn = document.getElementById("profile-save-btn");
+
+  const user = AppState.user || JSON.parse(localStorage.getItem("currentUser") || "{}");
+  if (nameInput && user.name && !nameInput.value) nameInput.value = user.name;
+  if (emailInput && user.email && !emailInput.value) emailInput.value = user.email;
+
+  if (form && !form.dataset.bound) {
+    form.dataset.bound = "true";
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = nameInput ? nameInput.value.trim() : "";
+      const email = emailInput ? emailInput.value.trim() : "";
+      const password = passwordInput ? passwordInput.value : "";
+
+      if (!name) {
+        showToast("Validation Error", "Please provide a valid full name.", "warning");
+        if (nameInput) nameInput.focus();
+        return;
+      }
+
+      if (password && password.length < 8) {
+        showToast("Validation Error", "New password must be at least 8 characters long.", "warning");
+        if (passwordInput) passwordInput.focus();
+        return;
+      }
+
+      const payload = { name };
+      if (email && email !== user.email) payload.email = email;
+      if (password) payload.password = password;
+
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving Profile Changes...";
+      }
+
+      try {
+        const res = await financeAPI.updateProfile(payload);
+        const updatedUser = res.data;
+        AppState.user = updatedUser;
+        setAuthSession(getAuthToken(), updatedUser);
+        updateUserProfileUI(updatedUser);
+        updateGreetingAndDate();
+        if (passwordInput) passwordInput.value = "";
+        showToast("Profile Updated", "Your profile details have been saved successfully.", "success");
+      } catch (err) {
+        console.error("Failed to update profile:", err);
+        showToast("Save Failed", err.message || "Failed to save profile changes.", "danger");
+      } finally {
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save Profile Changes";
+        }
+      }
+    });
+  }
+}
+
+/**
+ * Load and render real-time Smart Insights view from FastAPI /api/insights
+ */
+async function loadInsightsView() {
+  const container = document.getElementById("insights-view-container");
+  const badge = document.getElementById("insights-engine-badge");
+  if (!container) return;
+
+  try {
+    const res = await financeAPI.getInsights();
+    const data = res && res.data ? res.data : null;
+
+    if (!data) {
+      container.innerHTML = `
+        <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">✨</div>
+          <div style="font-weight: 700; color: var(--text-primary);">Financial Intelligence Engine Ready</div>
+          <div style="font-size: 0.8125rem; margin-top: 0.25rem;">Record income and expense transactions to generate personalized insights and anomaly detection.</div>
+        </div>
+      `;
+      return;
+    }
+
+    if (badge) {
+      badge.textContent = `Engine Active • ${data.summary?.cashflow_status || 'ONLINE'}`;
+      badge.className = `badge ${data.summary?.cashflow_status === 'SURPLUS' ? 'badge-emerald' : data.summary?.cashflow_status === 'BALANCED' ? 'badge-cyan' : 'badge-rose'}`;
+    }
+
+    const summary = data.summary || {};
+    const insights = data.insights || [];
+    const recommendations = data.recommendations || [];
+    const savingsOpportunities = data.savings_opportunities || [];
+
+    let html = `
+      <!-- Executive Cashflow Intelligence Summary -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Active Month Cashflow</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: ${summary.net_savings >= 0 ? 'var(--emerald)' : 'var(--rose)'}; margin-top: 0.25rem;">
+            ${formatCurrency(summary.net_savings)}
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            Status: <strong>${summary.cashflow_status || 'HEALTHY'}</strong> (${summary.savings_rate || 0}% Savings Rate)
+          </div>
+        </div>
+
+        <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Monthly Income Inflow</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--emerald); margin-top: 0.25rem;">
+            ${formatCurrency(summary.total_income)}
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            Current Month: <strong>${summary.current_month || 'Active Period'}</strong>
+          </div>
+        </div>
+
+        <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Monthly Outflow Expenses</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--rose); margin-top: 0.25rem;">
+            ${formatCurrency(summary.total_expenses)}
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            Automated Expense Velocity Checked
+          </div>
+        </div>
+      </div>
+
+      <!-- Actionable Insights Cards Grid -->
+      <div style="margin-bottom: 1.5rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.75rem;">Behavioral Spending Intelligence</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem;">
+          ${insights.length === 0 ? `
+            <div style="grid-column: 1 / -1; padding: 1.5rem; text-align: center; color: var(--text-muted); background: var(--surface-secondary); border-radius: var(--radius-md);">
+              ✨ All spending behaviors and cash flow ratios are disciplined!
+            </div>
+          ` : insights.map(item => {
+            const sev = (item.severity || 'INFO').toLowerCase();
+            const badgeClass = sev === 'positive' ? 'badge-emerald' : (sev === 'critical' ? 'badge-rose' : (sev === 'warning' ? 'badge-amber' : 'badge-indigo'));
+            return `
+              <div class="card" style="background: var(--surface-secondary); border-left: 4px solid ${sev === 'positive' ? 'var(--emerald)' : (sev === 'critical' ? 'var(--rose)' : (sev === 'warning' ? 'var(--amber)' : 'var(--indigo)'))};">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                  <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">${escapeHtml(item.title)}</div>
+                  <span class="badge ${badgeClass}" style="font-size: 0.6875rem;">${escapeHtml(item.severity)}</span>
+                </div>
+                <p style="font-size: 0.875rem; color: var(--text-secondary); line-height: 1.5; margin: 0 0 0.5rem 0;">
+                  ${escapeHtml(item.message)}
+                </p>
+                ${item.recommendation ? `
+                  <div style="font-size: 0.8125rem; color: var(--indigo); background: rgba(99, 102, 241, 0.08); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm);">
+                    💡 <strong>Action:</strong> ${escapeHtml(item.recommendation)}
+                  </div>
+                ` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+
+    // Savings Opportunities
+    if (savingsOpportunities.length > 0) {
+      html += `
+        <div style="margin-bottom: 1.5rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.75rem;">Discretionary Savings Opportunities</h3>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;">
+            ${savingsOpportunities.map(opp => `
+              <div class="card" style="background: var(--surface-secondary);">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5rem;">
+                  <div style="font-weight: 700; color: var(--text-primary);">${getCategoryIcon(opp.category)} ${escapeHtml(opp.category)}</div>
+                  <span class="badge badge-emerald">Save ${formatCurrency(opp.potential_monthly_saving)}/mo</span>
+                </div>
+                <p style="font-size: 0.8125rem; color: var(--text-secondary); margin-bottom: 0.5rem;">${escapeHtml(opp.explanation)}</p>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                  Annual Wealth Accumulation: <strong style="color: var(--emerald);">${formatCurrency(opp.potential_annual_saving)}</strong>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // High Impact Recommendations
+    if (recommendations.length > 0) {
+      html += `
+        <div>
+          <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.75rem;">High-Impact Financial Optimizations</h3>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            ${recommendations.map(rec => `
+              <div style="background: var(--surface-secondary); padding: 1rem 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                  <div style="font-weight: 700; color: var(--text-primary); font-size: 0.9375rem;">${escapeHtml(rec.title)}</div>
+                  <div style="font-size: 0.8125rem; color: var(--text-secondary); margin-top: 0.2rem;">${escapeHtml(rec.action)}</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  ${rec.potential_monthly_saving ? `<span class="badge badge-emerald">+${formatCurrency(rec.potential_monthly_saving)}/mo</span>` : ''}
+                  <span class="badge ${rec.impact === 'HIGH' ? 'badge-rose' : 'badge-amber'}">${escapeHtml(rec.impact)} IMPACT</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = html;
+  } catch (err) {
+    console.error("Failed to load insights view:", err);
+    container.innerHTML = `
+      <div style="padding: 2rem; text-align: center; color: var(--rose);">
+        Failed to load smart insights: ${escapeHtml(err.message)}
+      </div>
+    `;
+  }
+}
+
+/**
+ * Load and render real-time Multi-Month Analytics from FastAPI /api/finance/analysis
+ */
+async function loadAnalyticsView() {
+  const container = document.getElementById("analytics-view-container");
+  if (!container) return;
+
+  try {
+    const res = await financeAPI.getFinanceAnalysis();
+    const data = res && res.data ? res.data : null;
+
+    if (!data) {
+      container.innerHTML = `
+        <div style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">📊</div>
+          <div style="font-weight: 700; color: var(--text-primary);">Analytics Engine Initialized</div>
+          <div style="font-size: 0.8125rem; margin-top: 0.25rem;">Add transactions to populate multi-month inflow/outflow velocity and trend charts.</div>
+        </div>
+      `;
+      return;
+    }
+
+    const summary = data.summary || {};
+    const spending = data.spending_analysis || {};
+    const topCategories = spending.top_categories || [];
+    const forecast = data.cashflow_forecast || {};
+    const forecastMonths = forecast.forecast_months || [];
+
+    let html = `
+      <!-- Financial Analytics KPI Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
+        <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Income Inflow</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--emerald); margin-top: 0.25rem;">${formatCurrency(summary.total_income)}</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            MoM Growth: <span class="${summary.income_growth?.is_increase ? 'trend-up' : 'trend-down'}">${summary.income_growth?.text || '0%'}</span>
+          </div>
+        </div>
+
+        <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Expense Outflow</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--rose); margin-top: 0.25rem;">${formatCurrency(summary.total_expenses)}</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            MoM Growth: <span class="${summary.expense_growth?.is_increase ? 'trend-down' : 'trend-up'}">${summary.expense_growth?.text || '0%'}</span>
+          </div>
+        </div>
+
+        <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Cumulative Savings Retention</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--indigo); margin-top: 0.25rem;">${formatCurrency(summary.net_savings)}</div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            Net Savings Rate: <strong>${summary.savings_rate || 0}%</strong>
+          </div>
+        </div>
+
+        <div style="background: var(--surface-secondary); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Spending Concentration</div>
+          <div style="font-size: 1.5rem; font-weight: 800; color: var(--text-primary); margin-top: 0.25rem;">
+            ${spending.spending_concentration_top1 || 0}%
+          </div>
+          <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+            Top 3 Outflow Share: <strong>${spending.spending_concentration_top3 || 0}%</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Category Spending Breakdown Table -->
+      <div style="margin-bottom: 2rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin-bottom: 0.75rem;">Spending Velocity & Category Distribution</h3>
+        <div class="table-responsive">
+          <table class="finance-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Monthly Spent</th>
+                <th>Share of Outflow</th>
+                <th>Transaction Count</th>
+                <th>Category Icon</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${topCategories.length === 0 ? `
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No category outflow recorded.</td></tr>
+              ` : topCategories.map(c => `
+                <tr>
+                  <td style="font-weight: 700; color: var(--text-primary);">${getCategoryIcon(c.category)} ${escapeHtml(c.category)}</td>
+                  <td style="font-weight: 800; color: var(--rose);">${formatCurrency(c.amount)}</td>
+                  <td>
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <div class="progress-bar-container" style="flex: 1; height: 6px; width: 100px;">
+                        <div class="progress-bar-fill" style="width: ${c.percentage}%; background: var(--rose);"></div>
+                      </div>
+                      <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700;">${c.percentage}%</span>
+                    </div>
+                  </td>
+                  <td style="color: var(--text-secondary);">${c.transaction_count} transactions</td>
+                  <td><span class="table-cat-tag">${escapeHtml(c.category)}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Multi-Month Cash Flow Forecast -->
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary); margin: 0;">Multi-Month Cashflow Projections</h3>
+          <span class="badge badge-emerald">${escapeHtml(forecast.confidence_level || 'MEDIUM')} CONFIDENCE</span>
+        </div>
+        <div class="table-responsive">
+          <table class="finance-table">
+            <thead>
+              <tr>
+                <th>Timeline</th>
+                <th>Estimated Inflow</th>
+                <th>Estimated Outflow</th>
+                <th>Projected Surplus</th>
+                <th>Projected Savings Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${forecastMonths.length === 0 ? `
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Record 1+ months of data to unlock multi-month predictive modeling.</td></tr>
+              ` : forecastMonths.map(fm => `
+                <tr>
+                  <td style="font-weight: 700; color: var(--text-primary);">${escapeHtml(fm.month_label)}</td>
+                  <td style="color: var(--emerald); font-weight: 700;">${formatCurrency(fm.estimated_income)}</td>
+                  <td style="color: var(--rose); font-weight: 700;">${formatCurrency(fm.estimated_expenses)}</td>
+                  <td style="font-weight: 800; color: ${fm.estimated_net_savings >= 0 ? 'var(--emerald)' : 'var(--rose)'};">
+                    ${formatCurrency(fm.estimated_net_savings)}
+                  </td>
+                  <td>
+                    <span class="badge ${fm.estimated_savings_rate >= 20 ? 'badge-emerald' : 'badge-amber'}">
+                      ${fm.estimated_savings_rate}%
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+  } catch (err) {
+    console.error("Failed to load analytics view:", err);
+    container.innerHTML = `
+      <div style="padding: 2rem; text-align: center; color: var(--rose);">
+        Failed to load financial analytics: ${escapeHtml(err.message)}
+      </div>
+    `;
+  }
+}
+
+window.loadInsightsView = loadInsightsView;
+window.loadAnalyticsView = loadAnalyticsView;
+window.setupProfileForm = setupProfileForm;
 
 /**
  * Phase 3.7: Load and Render Deterministic AI Financial Forecasts

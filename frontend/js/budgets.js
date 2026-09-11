@@ -21,9 +21,28 @@ function initBudgets() {
  */
 function setupBudgetModals() {
   const form = document.getElementById("budget-modal-form");
-  if (form) {
+  if (form && !form.dataset.bound) {
+    form.dataset.bound = "true";
     form.addEventListener("submit", handleSaveBudget);
   }
+
+  const submitBtn = document.getElementById("budget-modal-submit-btn");
+  if (submitBtn && !submitBtn.dataset.bound) {
+    submitBtn.dataset.bound = "true";
+    submitBtn.addEventListener("click", (e) => {
+      if (form && typeof form.requestSubmit === "function") {
+        e.preventDefault();
+        form.requestSubmit();
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const modal = document.getElementById("budget-modal");
+      if (modal && modal.classList.contains("active")) closeBudgetModal();
+    }
+  });
 }
 
 /**
@@ -183,10 +202,15 @@ function openCreateBudgetModal() {
   const modalTitle = document.getElementById("budget-modal-title");
   const categorySelect = document.getElementById("budget-modal-category");
   const amountInput = document.getElementById("budget-modal-amount");
+  const submitBtn = document.getElementById("budget-modal-submit-btn") || document.querySelector("#budget-modal-form button[type='submit']");
 
   if (!modal) return;
 
-  modalTitle.textContent = "Create Category Budget Envelope";
+  if (modalTitle) modalTitle.textContent = "Create Category Budget Envelope";
+  if (submitBtn) {
+    submitBtn.textContent = "Save Budget";
+    submitBtn.disabled = false;
+  }
   if (categorySelect) {
     categorySelect.disabled = false;
     categorySelect.value = "Food";
@@ -194,29 +218,70 @@ function openCreateBudgetModal() {
   if (amountInput) amountInput.value = "10000";
 
   modal.classList.add("active");
+  if (amountInput) {
+    setTimeout(() => amountInput.focus(), 150);
+  }
 }
 
 /**
  * Open Modal to Adjust Existing Budget Limit
+ * Robust signature: handles (budgetId, category, currentAmount) OR (category, currentAmount)
  */
-function openEditBudgetModal(budgetId, category, currentAmount) {
+function openEditBudgetModal(arg1, arg2, arg3) {
+  let budgetId = null;
+  let category = "Food";
+  let currentAmount = 10000;
+
+  if (arg3 !== undefined) {
+    budgetId = arg1;
+    category = String(arg2);
+    currentAmount = arg3;
+  } else if (arg2 !== undefined) {
+    if (typeof arg1 === "number") {
+      budgetId = arg1;
+      currentAmount = arg2;
+    } else {
+      category = String(arg1);
+      currentAmount = arg2;
+      // Look up budgetId from AppState
+      const match = (AppState.budgets || []).find(b => b.category.toLowerCase() === category.toLowerCase());
+      if (match) budgetId = match.id;
+    }
+  } else if (arg1 !== undefined) {
+    category = String(arg1);
+    const match = (AppState.budgets || []).find(b => b.category.toLowerCase() === category.toLowerCase());
+    if (match) {
+      budgetId = match.id;
+      currentAmount = match.amount;
+    }
+  }
+
   editingBudgetId = budgetId;
   editingBudgetCategory = category;
+
   const modal = document.getElementById("budget-modal");
   const modalTitle = document.getElementById("budget-modal-title");
   const categorySelect = document.getElementById("budget-modal-category");
   const amountInput = document.getElementById("budget-modal-amount");
+  const submitBtn = document.getElementById("budget-modal-submit-btn") || document.querySelector("#budget-modal-form button[type='submit']");
 
   if (!modal) return;
 
-  modalTitle.textContent = `Adjust Budget for ${category}`;
+  if (modalTitle) modalTitle.textContent = `Adjust Budget for ${category}`;
+  if (submitBtn) {
+    submitBtn.textContent = "Update Budget";
+    submitBtn.disabled = false;
+  }
   if (categorySelect) {
     categorySelect.value = category;
-    categorySelect.disabled = true; // Category locked during update
+    categorySelect.disabled = true; // Category locked during envelope limit adjustment
   }
   if (amountInput) amountInput.value = currentAmount;
 
   modal.classList.add("active");
+  if (amountInput) {
+    setTimeout(() => amountInput.focus(), 150);
+  }
 }
 
 function closeBudgetModal() {
@@ -230,22 +295,32 @@ function closeBudgetModal() {
  * Handle Save Budget (Create or Update via FastAPI)
  */
 async function handleSaveBudget(e) {
-  e.preventDefault();
-  const categorySelect = document.getElementById("budget-modal-category");
-  const amountInput = document.getElementById("budget-modal-amount");
+  if (e && typeof e.preventDefault === "function") {
+    e.preventDefault();
+  }
+  const categorySelect = document.getElementById("budget-modal-category") || document.querySelector("#budget-modal-form select");
+  const amountInput = document.getElementById("budget-modal-amount") || document.querySelector("#budget-modal-form input[type='number']");
 
-  const category = categorySelect.value;
-  const amount = parseFloat(amountInput.value).toFixed(2);
+  const category = (categorySelect && categorySelect.value) ? categorySelect.value : (editingBudgetCategory || "Other");
+  const rawAmount = (amountInput && amountInput.value) ? amountInput.value : "";
+  const numAmount = parseFloat(rawAmount);
   const now = new Date();
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
 
-  if (!category || !amount || Number(amount) <= 0) {
-    showToast("Validation Error", "Please enter a valid positive budget amount.", "warning");
+  if (!category) {
+    showToast("Validation Error", "Please select a budget category.", "warning");
     return;
   }
 
-  const submitBtn = document.querySelector("#budget-modal-form button[type='submit']");
+  if (isNaN(numAmount) || numAmount <= 0) {
+    showToast("Validation Error", "Please enter a valid positive budget amount.", "warning");
+    if (amountInput) amountInput.focus();
+    return;
+  }
+
+  const amountStr = numAmount.toFixed(2);
+  const submitBtn = document.getElementById("budget-modal-submit-btn") || document.querySelector("#budget-modal-form button[type='submit']");
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = "Saving...";
@@ -254,37 +329,41 @@ async function handleSaveBudget(e) {
   try {
     if (editingBudgetId) {
       await apiPut(`/budgets/${editingBudgetId}`, {
-        amount: amount
+        amount: amountStr
       });
-      showToast("Budget Updated", `Updated ${category} budget to ${formatCurrency(amount)}.`, "success");
+      showToast("Budget Updated", `Updated ${category} budget to ${formatCurrency(numAmount)}.`, "success");
     } else {
       // Check if existing budget exists for this category
       const existing = (AppState.budgets || []).find(b => b.category.toLowerCase() === category.toLowerCase());
       if (existing) {
         await apiPut(`/budgets/${existing.id}`, {
-          amount: amount
+          amount: amountStr
         });
-        showToast("Budget Updated", `Updated ${category} budget to ${formatCurrency(amount)}.`, "success");
+        showToast("Budget Updated", `Updated ${category} budget to ${formatCurrency(numAmount)}.`, "success");
       } else {
         await apiPost("/budgets", {
           category,
-          amount,
+          amount: amountStr,
           month,
           year
         });
-        showToast("Budget Set", `Set ${category} envelope to ${formatCurrency(amount)}.`, "success");
+        showToast("Budget Set", `Set ${category} envelope to ${formatCurrency(numAmount)}.`, "success");
       }
     }
 
     closeBudgetModal();
     await loadAppData();
+    renderBudgetsView();
+
+    if (typeof loadInsightsView === "function") loadInsightsView();
+    if (typeof loadAnalyticsView === "function") loadAnalyticsView();
   } catch (err) {
     console.error("Failed to save budget:", err);
     showToast("Budget Error", err.message || "Failed to save budget limit.", "danger");
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Save Budget";
+      submitBtn.textContent = editingBudgetId ? "Update Budget" : "Save Budget";
     }
   }
 }
@@ -299,6 +378,10 @@ async function handleDeleteBudget(budgetId) {
     await apiDelete(`/budgets/${budgetId}`);
     showToast("Budget Removed", "Budget envelope deleted successfully.", "success");
     await loadAppData();
+    renderBudgetsView();
+
+    if (typeof loadInsightsView === "function") loadInsightsView();
+    if (typeof loadAnalyticsView === "function") loadAnalyticsView();
   } catch (err) {
     console.error("Failed to delete budget:", err);
     showToast("Delete Failed", err.message || "Failed to delete budget envelope.", "danger");
@@ -310,4 +393,5 @@ window.openCreateBudgetModal = openCreateBudgetModal;
 window.openEditBudgetModal = openEditBudgetModal;
 window.closeBudgetModal = closeBudgetModal;
 window.handleDeleteBudget = handleDeleteBudget;
-
+window.initBudgets = initBudgets;
+window.renderBudgetsView = renderBudgetsView;

@@ -45,8 +45,12 @@ elif db_url.startswith("mysql"):
     # TiDB Cloud / MySQL connection pool optimizations
     engine_kwargs["pool_size"] = 10
     engine_kwargs["max_overflow"] = 20
-    engine_kwargs["pool_recycle"] = 300  # Recycle connections every 5 min to avoid serverless timeout drops
+    engine_kwargs["pool_recycle"] = 180  # Recycle connections every 3 min to avoid serverless timeout drops
+    engine_kwargs["pool_timeout"] = 30
     connect_args["charset"] = "utf8mb4"
+    connect_args["connect_timeout"] = 30
+    connect_args["read_timeout"] = 30
+    connect_args["write_timeout"] = 30
 
 engine_kwargs["connect_args"] = connect_args
 
@@ -83,8 +87,17 @@ def get_db() -> Generator[Session, None, None]:
     db: Session = SessionLocal()
     try:
         yield db
+    except Exception:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        raise
     finally:
-        db.close()
+        try:
+            db.close()
+        except Exception:
+            pass
 
 
 def check_db_connected() -> bool:

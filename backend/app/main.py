@@ -114,6 +114,12 @@ async def root() -> RootResponse:
     tags=["Health"],
     summary="Service & Database Health Verification"
 )
+@app.get(
+    "/api/health",
+    response_model=HealthResponse,
+    tags=["Health"],
+    summary="Service & Database Health Verification (API prefix)"
+)
 async def health_check(db: Session = Depends(get_db)) -> HealthResponse:
     """Genuinely verify database connectivity by executing a test query."""
     try:
@@ -140,6 +146,11 @@ async def health_check(db: Session = Depends(get_db)) -> HealthResponse:
     tags=["Health"],
     summary="Liveness Probe"
 )
+@app.get(
+    "/api/health/live",
+    tags=["Health"],
+    summary="Liveness Probe (API prefix)"
+)
 async def liveness_probe() -> dict:
     """Liveness probe for orchestrator container monitoring."""
     return {
@@ -153,6 +164,11 @@ async def liveness_probe() -> dict:
     "/health/ready",
     tags=["Health"],
     summary="Readiness Probe"
+)
+@app.get(
+    "/api/health/ready",
+    tags=["Health"],
+    summary="Readiness Probe (API prefix)"
 )
 async def readiness_probe(db: Session = Depends(get_db)) -> dict:
     """Readiness probe checking database connectivity and provider readiness."""
@@ -174,4 +190,13 @@ async def readiness_probe(db: Session = Depends(get_db)) -> dict:
                 "database": "disconnected"
             }
         )
+
+
+# Mount Static Frontend Files
+import os
+from fastapi.staticfiles import StaticFiles
+
+frontend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend"))
+if os.path.isdir(frontend_dir):
+    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 

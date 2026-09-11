@@ -26,6 +26,10 @@ class Settings(BaseSettings):
             "http://127.0.0.1:5500",
             "http://localhost:8000",
             "http://127.0.0.1:8000",
+            "https://smart-personal-finance-dashboard-on.vercel.app",
+            "https://smart-personal-finance-dashboard-on7q.vercel.app",
+            "https://smart-personal-finance-dashboard-on7q-9r6s6nnz3.vercel.app",
+            "https://smart-personal-finance-dashboard-zed3.onrender.com",
         ],
         validation_alias=AliasChoices("ALLOWED_ORIGINS", "CORS_ALLOWED_ORIGINS")
     )

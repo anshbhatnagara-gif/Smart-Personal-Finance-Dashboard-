@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.user import User
 from app.schemas.common import ResponseBase
-from app.schemas.user import UserCreate, UserLogin, UserResponse, TokenResponse
+from app.schemas.user import UserCreate, UserLogin, UserUpdate, UserResponse, TokenResponse
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -67,4 +67,30 @@ async def get_current_user_profile(
         success=True,
         message="User profile retrieved",
         data=UserResponse.model_validate(current_user)
+    )
+
+
+@router.put(
+    "/me",
+    response_model=ResponseBase[UserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Current User Profile"
+)
+@router.patch(
+    "/me",
+    response_model=ResponseBase[UserResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Update Current User Profile (Patch)"
+)
+async def update_current_user_profile(
+    user_in: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+) -> ResponseBase[UserResponse]:
+    """Update profile information of the currently authenticated user."""
+    updated_user = AuthService.update_user(db, current_user, user_in)
+    return ResponseBase(
+        success=True,
+        message="User profile updated successfully",
+        data=UserResponse.model_validate(updated_user)
     )

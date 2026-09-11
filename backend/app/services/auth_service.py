@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password, create_access_token
 from app.models.user import User
-from app.schemas.user import UserCreate, UserLogin, TokenResponse, UserResponse
+from app.schemas.user import UserCreate, UserLogin, UserUpdate, TokenResponse, UserResponse
 
 
 class AuthService:
@@ -50,6 +50,27 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"}
             )
 
+        return user
+
+    @staticmethod
+    def update_user(db: Session, user: User, user_in: "UserUpdate") -> User:
+        """Update authenticated user profile information."""
+        if user_in.name is not None and user_in.name.strip():
+            user.name = user_in.name.strip()
+        if user_in.email is not None and user_in.email.strip():
+            new_email = user_in.email.lower().strip()
+            if new_email != user.email:
+                existing = db.query(User).filter(User.email == new_email).first()
+                if existing and existing.id != user.id:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="An account with this email address already exists"
+                    )
+                user.email = new_email
+        if user_in.password is not None and len(user_in.password) >= 8:
+            user.password_hash = hash_password(user_in.password)
+        db.commit()
+        db.refresh(user)
         return user
 
     @classmethod

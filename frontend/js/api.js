@@ -7,28 +7,125 @@
  */
 
 /**
- * Resolve API base URL dynamically:
- * 1. window.__ENV__?.API_BASE_URL (Runtime script injection in production)
- * 2. localStorage.getItem("API_BASE_URL") (Manual environment override)
- * 3. Default to "http://127.0.0.1:8000/api" for local development or origin + /api in production
+ * Known Production Backend Endpoint on Render
+ */
+const PRODUCTION_RENDER_BACKEND_URL = "https://smart-personal-finance-dashboard-zed3.onrender.com/api";
+const LOCAL_BACKEND_URL = "http://127.0.0.1:8000/api";
+
+/**
+ * Detect runtime execution environment:
+ * - 'file': Direct filesystem execution (file://)
+ * - 'local': Local HTTP server (localhost, 127.0.0.1, 0.0.0.0, 192.168.x.x)
+ * - 'production': Hosted web server (e.g. *.vercel.app, *.onrender.com, custom domain)
+ */
+function getRuntimeEnvironment() {
+  if (typeof window === "undefined" || !window.location) {
+    return { type: "local", isFile: false, isLocal: true, isProduction: false };
+  }
+
+  const protocol = window.location.protocol || "";
+  const hostname = (window.location.hostname || "").toLowerCase();
+
+  if (protocol === "file:") {
+    return { type: "file", isFile: true, isLocal: false, isProduction: false };
+  }
+
+  if (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "0.0.0.0" ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("10.") ||
+    hostname.endsWith(".local")
+  ) {
+    return { type: "local", isFile: false, isLocal: true, isProduction: false };
+  }
+
+  return { type: "production", isFile: false, isLocal: false, isProduction: true };
+}
+
+/**
+ * Normalize and sanitize custom API base URL strings
+ */
+function sanitizeApiUrl(url) {
+  if (!url) return LOCAL_BACKEND_URL;
+  let clean = url.trim().replace(/\/+$/, "");
+  if (!clean.endsWith("/api")) {
+    clean += "/api";
+  }
+  return clean;
+}
+
+/**
+ * Resolve API base URL with zero ambiguity:
+ * 1. window.__ENV__?.API_BASE_URL (Explicit runtime configuration injection)
+ * 2. localStorage.getItem("API_BASE_URL") (Developer manual override)
+ * 3. Direct File Protocol (file://):
+ *    - NEVER emits "file:///api"
+ *    - Defaults to local backend "http://127.0.0.1:8000/api"
+ * 4. Local Web Server (e.g. http://127.0.0.1:3000):
+ *    - If served directly from backend port 8000: uses same-origin "/api"
+ *    - Otherwise uses "http://127.0.0.1:8000/api"
+ * 5. Production (Vercel / Render / Custom Domain):
+ *    - Vercel proxy rewrite: "/api" (which proxies to Render backend)
+ *    - Fallback: PRODUCTION_RENDER_BACKEND_URL
  */
 function resolveApiBaseUrl() {
   if (typeof window !== "undefined") {
+    // 1. Explicit window.__ENV__
     if (window.__ENV__ && window.__ENV__.API_BASE_URL) {
-      return window.__ENV__.API_BASE_URL;
+      return sanitizeApiUrl(window.__ENV__.API_BASE_URL);
     }
-    const localOverride = localStorage.getItem("API_BASE_URL");
-    if (localOverride) return localOverride;
 
-    if (window.location && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+    // 2. LocalStorage override
+    const localOverride = localStorage.getItem("API_BASE_URL");
+    if (localOverride) {
+      return sanitizeApiUrl(localOverride);
+    }
+
+    const env = getRuntimeEnvironment();
+
+    // 3. Direct File Protocol: NEVER use file:///api
+    if (env.isFile) {
+      return LOCAL_BACKEND_URL;
+    }
+
+    // 4. Local Web Server (e.g. port 3000, 5500, etc.)
+    if (env.isLocal) {
+      if (window.location.port === "8000") {
+        return `${window.location.origin}/api`;
+      }
+      return LOCAL_BACKEND_URL;
+    }
+
+    // 5. Production (Vercel / Render / Custom Domain)
+    if (window.location.protocol && window.location.protocol.startsWith("http")) {
       return `${window.location.origin}/api`;
     }
+
+    return PRODUCTION_RENDER_BACKEND_URL;
   }
-  return "http://127.0.0.1:8000/api";
+
+  return LOCAL_BACKEND_URL;
 }
 
+const RUNTIME_ENV = getRuntimeEnvironment();
 const API_BASE_URL = resolveApiBaseUrl();
 const API_MODE = "real"; // 'real' connects to FastAPI, 'mock' uses localStorage
+
+/**
+ * Generate human-friendly network error descriptions based on runtime environment
+ */
+function formatNetworkErrorMessage(error) {
+  const env = getRuntimeEnvironment();
+  if (env.isFile) {
+    return "Local file mode detected (file://). Please start the local frontend server (e.g. 'python -m http.server 3000') and open http://127.0.0.1:3000/login.html, or access the live deployed dashboard.";
+  }
+  if (env.isLocal) {
+    return `Finance backend server is unavailable at ${API_BASE_URL}. Please ensure the FastAPI backend is running (e.g. 'uv run --with-requirements requirements.txt uvicorn app.main:app --host 127.0.0.1 --port 8000').`;
+  }
+  return `Finance server is temporarily unreachable at ${API_BASE_URL}. If using the free tier, the backend may be waking from idle sleep. Please wait 15 seconds and try again.`;
+}
 
 /**
  * Get authentication Bearer token from localStorage
@@ -121,6 +218,25 @@ function formatApiErrorMessage(errorData, status) {
 }
 
 /**
+ * Safely construct absolute API URLs for fetch
+ */
+function buildApiUrl(endpoint, params = {}) {
+  let base = API_BASE_URL;
+  if (!base.startsWith("http://") && !base.startsWith("https://")) {
+    const origin = (typeof window !== "undefined" && window.location && window.location.origin) ? window.location.origin : "http://127.0.0.1:8000";
+    base = `${origin}${base.startsWith("/") ? "" : "/"}${base}`;
+  }
+  const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+  const url = new URL(`${base}${cleanEndpoint}`);
+  Object.keys(params).forEach(key => {
+    if (params[key] !== undefined && params[key] !== null && params[key] !== "") {
+      url.searchParams.append(key, params[key]);
+    }
+  });
+  return url.toString();
+}
+
+/**
  * Perform a GET request to the API
  * @param {string} endpoint - API route (e.g., '/transactions')
  * @param {Object} [params] - Query parameters
@@ -131,15 +247,10 @@ async function apiGet(endpoint, params = {}) {
     return handleMockRequest("GET", endpoint, null, params);
   }
 
-  const url = new URL(`${API_BASE_URL}${endpoint}`);
-  Object.keys(params).forEach(key => {
-    if (params[key] !== undefined && params[key] !== null && params[key] !== "") {
-      url.searchParams.append(key, params[key]);
-    }
-  });
+  const requestUrl = buildApiUrl(endpoint, params);
 
   try {
-    const response = await fetch(url.toString(), {
+    const response = await fetch(requestUrl, {
       method: "GET",
       headers: getHeaders()
     });
@@ -156,7 +267,7 @@ async function apiGet(endpoint, params = {}) {
     return await response.json();
   } catch (error) {
     if (error.name === "TypeError" && error.message.includes("fetch")) {
-      throw new Error(`Unable to connect to the finance server (${API_BASE_URL}). Please check backend status.`);
+      throw new Error(formatNetworkErrorMessage(error));
     }
     throw error;
   }
@@ -173,8 +284,10 @@ async function apiPost(endpoint, data = {}) {
     return handleMockRequest("POST", endpoint, data);
   }
 
+  const requestUrl = buildApiUrl(endpoint);
+
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(requestUrl, {
       method: "POST",
       headers: getHeaders(),
       body: JSON.stringify(data)
@@ -192,7 +305,7 @@ async function apiPost(endpoint, data = {}) {
     return await response.json();
   } catch (error) {
     if (error.name === "TypeError" && error.message.includes("fetch")) {
-      throw new Error(`Unable to connect to the finance server (${API_BASE_URL}). Please check backend status.`);
+      throw new Error(formatNetworkErrorMessage(error));
     }
     throw error;
   }
@@ -209,8 +322,10 @@ async function apiPut(endpoint, data = {}) {
     return handleMockRequest("PUT", endpoint, data);
   }
 
+  const requestUrl = buildApiUrl(endpoint);
+
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(requestUrl, {
       method: "PUT",
       headers: getHeaders(),
       body: JSON.stringify(data)
@@ -228,7 +343,7 @@ async function apiPut(endpoint, data = {}) {
     return await response.json();
   } catch (error) {
     if (error.name === "TypeError" && error.message.includes("fetch")) {
-      throw new Error(`Unable to connect to the finance server (${API_BASE_URL}). Please check backend status.`);
+      throw new Error(formatNetworkErrorMessage(error));
     }
     throw error;
   }
@@ -244,8 +359,10 @@ async function apiDelete(endpoint) {
     return handleMockRequest("DELETE", endpoint);
   }
 
+  const requestUrl = buildApiUrl(endpoint);
+
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(requestUrl, {
       method: "DELETE",
       headers: getHeaders()
     });
@@ -262,7 +379,7 @@ async function apiDelete(endpoint) {
     return await response.json();
   } catch (error) {
     if (error.name === "TypeError" && error.message.includes("fetch")) {
-      throw new Error(`Unable to connect to the finance server (${API_BASE_URL}). Please check backend status.`);
+      throw new Error(formatNetworkErrorMessage(error));
     }
     throw error;
   }
@@ -279,8 +396,10 @@ async function apiPatch(endpoint, data = {}) {
     return handleMockRequest("PATCH", endpoint, data);
   }
 
+  const requestUrl = buildApiUrl(endpoint);
+
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const response = await fetch(requestUrl, {
       method: "PATCH",
       headers: getHeaders(),
       body: JSON.stringify(data)
@@ -298,7 +417,7 @@ async function apiPatch(endpoint, data = {}) {
     return await response.json();
   } catch (error) {
     if (error.name === "TypeError" && error.message.includes("fetch")) {
-      throw new Error(`Unable to connect to the finance server (${API_BASE_URL}). Please check backend status.`);
+      throw new Error(formatNetworkErrorMessage(error));
     }
     throw error;
   }
@@ -312,6 +431,8 @@ const financeAPI = {
   register: (data) => apiPost("/auth/register", data),
   login: (data) => apiPost("/auth/login", data),
   getMe: () => apiGet("/auth/me"),
+  updateMe: (data) => apiPut("/auth/me", data),
+  updateProfile: (data) => apiPut("/auth/me", data),
 
   // Transactions
   getTransactions: (params = {}) => apiGet("/transactions", params),
@@ -373,6 +494,7 @@ const financeAPI = {
 
 if (typeof window !== "undefined") {
   window.financeAPI = financeAPI;
+  window.FinanceAPI = financeAPI;
 }
 
 /**
@@ -434,5 +556,25 @@ function handleMockRequest(method, endpoint, body = null, params = {}) {
         reject(err);
       }
     }, 30);
+  });
+}
+
+// Auto-detect and warn about direct file:// execution
+if (typeof window !== "undefined") {
+  window.addEventListener("DOMContentLoaded", () => {
+    if (window.location && window.location.protocol === "file:") {
+      console.warn(
+        "[SmartFinance] Local file mode detected (file://). Direct AJAX/Fetch calls may be blocked by browser origin security. Please run 'python -m http.server 3000' in the frontend folder and open http://127.0.0.1:3000/login.html, or access the live deployed dashboard."
+      );
+      setTimeout(() => {
+        if (typeof showToast === "function") {
+          showToast(
+            "Local File Mode Detected",
+            "Please run the frontend with 'python -m http.server 3000' and open http://127.0.0.1:3000/login.html for full functionality.",
+            "warning"
+          );
+        }
+      }, 1000);
+    }
   });
 }

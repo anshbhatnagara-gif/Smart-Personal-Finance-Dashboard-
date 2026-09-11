@@ -296,6 +296,27 @@ smart-personal-finance/
 
 ---
 
+## 🚀 Local Development & Startup
+
+To run the complete full-stack environment locally without browser origin errors:
+
+### Terminal 1: Start FastAPI Backend
+```bash
+cd backend
+uv run --with-requirements requirements.txt uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+> The backend will initialize SQLite (`finance.db`) or your configured MySQL/TiDB database at `http://127.0.0.1:8000`.
+
+### Terminal 2: Start Frontend Static Web Server
+```bash
+cd frontend
+python -m http.server 3000
+```
+> Open your browser and navigate to: **`http://127.0.0.1:3000/login.html`**  
+> *(Do not open HTML files directly via `file://` to ensure full HTTP/CORS compatibility)*
+
+---
+
 ## 📡 API Endpoints Reference
 
 ### 🔐 Authentication & Profile (`/api/auth`)

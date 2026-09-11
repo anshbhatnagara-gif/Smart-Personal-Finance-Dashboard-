@@ -273,16 +273,44 @@ function goToTxPage(page) {
 /**
  * Setup Transaction Modals (Add, Edit, Delete)
  */
+/**
+ * Setup Transaction Modals (Add, Edit, Delete)
+ */
 function setupTransactionModals() {
   const form = document.getElementById("tx-modal-form");
-  if (form) {
+  if (form && !form.dataset.bound) {
+    form.dataset.bound = "true";
     form.addEventListener("submit", handleSaveTransaction);
   }
 
+  const submitBtn = document.getElementById("tx-modal-submit-btn");
+  if (submitBtn && !submitBtn.dataset.bound) {
+    submitBtn.dataset.bound = "true";
+    submitBtn.addEventListener("click", (e) => {
+      if (form) {
+        if (typeof form.requestSubmit === "function") {
+          e.preventDefault();
+          form.requestSubmit();
+        }
+      }
+    });
+  }
+
   const deleteConfirmBtn = document.getElementById("tx-delete-confirm-btn");
-  if (deleteConfirmBtn) {
+  if (deleteConfirmBtn && !deleteConfirmBtn.dataset.bound) {
+    deleteConfirmBtn.dataset.bound = "true";
     deleteConfirmBtn.addEventListener("click", handleConfirmDeleteTransaction);
   }
+
+  // Support Escape key to close transaction modals
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const txModal = document.getElementById("tx-modal");
+      const delModal = document.getElementById("tx-delete-modal");
+      if (txModal && txModal.classList.contains("active")) closeTxModal();
+      if (delModal && delModal.classList.contains("active")) closeDeleteTxModal();
+    }
+  });
 }
 
 /**
@@ -293,18 +321,30 @@ function openAddTransactionModal() {
   const modal = document.getElementById("tx-modal");
   const modalTitle = document.getElementById("tx-modal-title");
   const form = document.getElementById("tx-modal-form");
+  const submitBtn = document.getElementById("tx-modal-submit-btn") || document.querySelector("#tx-modal-form button[type='submit']");
 
   if (!modal || !form) return;
 
-  modalTitle.textContent = "Record New Transaction";
+  if (modalTitle) modalTitle.textContent = "Record New Transaction";
+  if (submitBtn) {
+    submitBtn.textContent = "Save Transaction";
+    submitBtn.disabled = false;
+  }
   form.reset();
 
-  const dateInput = document.getElementById("tx-modal-date");
+  const typeInput = document.getElementById("tx-modal-type") || document.querySelector("[name='type']");
+  if (typeInput) typeInput.value = "expense";
+
+  const dateInput = document.getElementById("tx-modal-date") || document.querySelector("[name='date']") || document.querySelector("[name='transaction_date']");
   if (dateInput) {
     dateInput.value = new Date().toISOString().split("T")[0];
   }
 
   modal.classList.add("active");
+  const titleInput = document.getElementById("tx-modal-title-input") || document.querySelector("#tx-modal-form input[type='text']");
+  if (titleInput) {
+    setTimeout(() => titleInput.focus(), 150);
+  }
 }
 
 /**
@@ -314,22 +354,34 @@ async function openEditTxModal(txId) {
   editingTxId = txId;
   const modal = document.getElementById("tx-modal");
   const modalTitle = document.getElementById("tx-modal-title");
+  const submitBtn = document.getElementById("tx-modal-submit-btn") || document.querySelector("#tx-modal-form button[type='submit']");
 
   if (!modal) return;
 
-  modalTitle.textContent = "Edit Transaction";
+  if (modalTitle) modalTitle.textContent = "Edit Transaction";
+  if (submitBtn) {
+    submitBtn.textContent = "Update Transaction";
+    submitBtn.disabled = false;
+  }
 
   try {
     const res = await apiGet(`/transactions/${txId}`);
     const tx = res.data;
-    if (!tx) throw new Error("Transaction data missing");
+    if (!tx) throw new Error("Transaction data missing from response");
 
-    document.getElementById("tx-modal-type").value = tx.type;
-    document.getElementById("tx-modal-title-input").value = tx.title;
-    document.getElementById("tx-modal-amount").value = tx.amount;
-    document.getElementById("tx-modal-category").value = tx.category;
-    document.getElementById("tx-modal-date").value = tx.transaction_date || tx.date;
-    document.getElementById("tx-modal-desc").value = tx.description || "";
+    const typeEl = document.getElementById("tx-modal-type") || document.querySelector("[name='type']");
+    const titleEl = document.getElementById("tx-modal-title-input") || document.querySelector("#tx-modal-form input[type='text']");
+    const amountEl = document.getElementById("tx-modal-amount") || document.querySelector("#tx-modal-form input[type='number']");
+    const categoryEl = document.getElementById("tx-modal-category") || document.querySelector("#tx-modal-form select:not([id='tx-modal-type'])");
+    const dateEl = document.getElementById("tx-modal-date") || document.querySelector("#tx-modal-form input[type='date']");
+    const descEl = document.getElementById("tx-modal-desc") || document.getElementById("tx-modal-description");
+
+    if (typeEl) typeEl.value = tx.type;
+    if (titleEl && titleEl.tagName === "INPUT") titleEl.value = tx.title || "";
+    if (amountEl) amountEl.value = tx.amount;
+    if (categoryEl) categoryEl.value = tx.category;
+    if (dateEl) dateEl.value = tx.transaction_date || tx.date;
+    if (descEl && descEl.tagName === "INPUT") descEl.value = tx.description || "";
 
     modal.classList.add("active");
   } catch (err) {
@@ -348,32 +400,57 @@ function closeTxModal() {
  * Handle Save Transaction (Create or Update via FastAPI)
  */
 async function handleSaveTransaction(e) {
-  e.preventDefault();
-  const type = document.getElementById("tx-modal-type").value;
-  const title = document.getElementById("tx-modal-title-input").value.trim();
-  const amount = document.getElementById("tx-modal-amount").value;
-  const category = document.getElementById("tx-modal-category").value;
-  const transaction_date = document.getElementById("tx-modal-date").value;
-  const description = document.getElementById("tx-modal-desc").value.trim();
+  if (e && typeof e.preventDefault === "function") {
+    e.preventDefault();
+  }
 
-  if (!title || !amount || !transaction_date) {
-    showToast("Validation Error", "Please fill in all required fields.", "warning");
+  const typeEl = document.getElementById("tx-modal-type") || document.querySelector("[name='type']") || document.getElementById("tx-type");
+  const titleEl = document.getElementById("tx-modal-title-input") || document.querySelector("#tx-modal-form input[type='text']") || document.getElementById("tx-title");
+  const amountEl = document.getElementById("tx-modal-amount") || document.querySelector("#tx-modal-form input[type='number']") || document.getElementById("tx-amount");
+  const categoryEl = document.getElementById("tx-modal-category") || document.querySelector("#tx-modal-form select:not([id='tx-modal-type'])") || document.getElementById("tx-category");
+  const dateEl = document.getElementById("tx-modal-date") || document.querySelector("#tx-modal-form input[type='date']") || document.getElementById("tx-date");
+  const descEl = document.getElementById("tx-modal-desc") || document.getElementById("tx-modal-description") || document.getElementById("tx-description");
+
+  const type = (typeEl && typeEl.value) ? typeEl.value : "expense";
+  const title = (titleEl && titleEl.value) ? titleEl.value.trim() : "";
+  const rawAmount = (amountEl && amountEl.value) ? amountEl.value : "";
+  const category = (categoryEl && categoryEl.value) ? categoryEl.value : "Other";
+  const transaction_date = (dateEl && dateEl.value) ? dateEl.value : new Date().toISOString().split("T")[0];
+  const description = (descEl && descEl.value) ? descEl.value.trim() : "";
+
+  // 1. Validation Checks
+  if (!title) {
+    showToast("Validation Error", "Please provide a transaction title or payee name.", "warning");
+    if (titleEl) titleEl.focus();
+    return;
+  }
+
+  const numAmount = parseFloat(rawAmount);
+  if (isNaN(numAmount) || numAmount <= 0) {
+    showToast("Validation Error", "Please enter a valid positive transaction amount.", "warning");
+    if (amountEl) amountEl.focus();
+    return;
+  }
+
+  if (!transaction_date) {
+    showToast("Validation Error", "Please select a valid transaction date.", "warning");
+    if (dateEl) dateEl.focus();
     return;
   }
 
   const payload = {
     type,
     title,
-    amount: parseFloat(amount).toFixed(2),
+    amount: numAmount.toFixed(2),
     category,
     transaction_date,
     description: description || null
   };
 
-  const submitBtn = document.querySelector("#tx-modal-form button[type='submit']");
+  const submitBtn = document.getElementById("tx-modal-submit-btn") || document.querySelector("#tx-modal-form button[type='submit']");
   if (submitBtn) {
     submitBtn.disabled = true;
-    submitBtn.textContent = "Saving...";
+    submitBtn.textContent = editingTxId ? "Updating..." : "Saving...";
   }
 
   try {
@@ -382,22 +459,26 @@ async function handleSaveTransaction(e) {
       showToast("Transaction Updated", `Updated ${title} successfully.`, "success");
     } else {
       await apiPost("/transactions", payload);
-      showToast("Transaction Added", `Recorded ${title} (${formatCurrency(amount)}).`, "success");
+      showToast("Transaction Recorded", `Recorded ${title} (${formatCurrency(numAmount)}).`, "success");
     }
 
     closeTxModal();
-    // Refresh both table and complete application state (KPIs, Charts, Budgets, Health Score)
+
+    // Instant state refresh across all components without manual page refresh
     await Promise.all([
       fetchAndRenderTransactions(),
       loadAppData()
     ]);
+
+    if (typeof loadInsightsView === "function") loadInsightsView();
+    if (typeof loadAnalyticsView === "function") loadAnalyticsView();
   } catch (err) {
     console.error("Failed to save transaction:", err);
-    showToast("Transaction Error", err.message || "Failed to save transaction.", "danger");
+    showToast("Save Failed", err.message || "Failed to save transaction.", "danger");
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
-      submitBtn.textContent = "Save Transaction";
+      submitBtn.textContent = editingTxId ? "Update Transaction" : "Save Transaction";
     }
   }
 }
@@ -432,10 +513,15 @@ async function handleConfirmDeleteTransaction() {
   try {
     await apiDelete(`/transactions/${deletingTxId}`);
     showToast("Transaction Deleted", "Transaction permanently removed.", "success");
+    closeDeleteTxModal();
+    
     await Promise.all([
       fetchAndRenderTransactions(),
       loadAppData()
     ]);
+
+    if (typeof loadInsightsView === "function") loadInsightsView();
+    if (typeof loadAnalyticsView === "function") loadAnalyticsView();
   } catch (err) {
     console.error("Failed to delete transaction:", err);
     showToast("Delete Failed", err.message || "Could not delete transaction.", "danger");

@@ -33,4 +33,4 @@ backend/finance.db
 Thumbs.db
 .idea/
 .vscode/
-scratch/*.log
+scratch/
